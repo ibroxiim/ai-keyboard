@@ -71,3 +71,15 @@ shortcuts sign --mode anyone --input build/AIKeyboard-unsigned.shortcut --output
 - Klaviatura faqat o'zi yozgan matnni ishonchli ko'radi. Boshqa klaviaturada yozilgan matnni ✨ ko'rmasligi mumkin.
 - API kalit ilova ichida — faqat shaxsiy foydalanish uchun. Boshqalarga tarqatishdan oldin kalitni server
   (masalan Cloudflare Worker) orqasiga o'tkazish kerak.
+
+## Hissa qo'shish
+
+Takliflar va PR'lar ochiq! Fork → branch → Pull Request. `main`'ga to'g'ridan-to'g'ri push yopiq.
+Batafsil: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Litsenziya
+
+Quyidagilardan biri, o'zingiz tanlaysiz:
+
+- [MIT](LICENSE-MIT)
+- [Apache License 2.0](LICENSE-APACHE)
