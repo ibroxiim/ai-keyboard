@@ -4,6 +4,7 @@
 > against `main` (direct pushes to `main` are blocked). Docs are in Uzbek, but issues and PRs in English are fine.
 
 AI Keyboard'ni yaxshilashga yordam berganingiz uchun rahmat. Quyidagi qadamlar PR'ingiz tez ko'rib chiqilishi uchun.
+Loyihadagi muloqot [Code of Conduct](CODE_OF_CONDUCT.md) qoidalariga amal qiladi.
 
 ## Qanday ishlaydi
 
