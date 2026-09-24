@@ -1,0 +1,59 @@
+name: AIKeyboard
+options:
+  bundleIdPrefix: com.ibrokhim
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: 2Y273CFX36
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1"
+targets:
+  Tarjimon:
+    type: application
+    platform: iOS
+    sources: [App, Shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ibrokhim.dmtranslator
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Tarjimon
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+    entitlements:
+      path: App/Tarjimon.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.ibrokhim.dmtranslator]
+    dependencies:
+      - target: TarjimonKeyboard
+    scheme: {}
+  TarjimonKeyboard:
+    type: app-extension
+    platform: iOS
+    sources: [Keyboard, Shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ibrokhim.dmtranslator.keyboard
+        APPLICATION_EXTENSION_API_ONLY: YES
+    info:
+      path: Keyboard/Info.plist
+      properties:
+        CFBundleDisplayName: Tarjimon
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
+          NSExtensionAttributes:
+            IsASCIICapable: false
+            PrefersRightToLeft: false
+            PrimaryLanguage: uz
+            RequestsOpenAccess: true
+    entitlements:
+      path: Keyboard/TarjimonKeyboard.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.ibrokhim.dmtranslator]
