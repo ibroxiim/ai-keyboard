@@ -32,6 +32,16 @@ targets:
         com.apple.security.application-groups: [group.com.ibrokhim.dmtranslator]
     dependencies:
       - target: TarjimonKeyboard
+    preBuildScripts:
+      # This file has gone missing from the working tree several times for unknown reasons, and a
+      # project generated without it silently ships an app without the Back Tap shortcut. Fail instead.
+      - name: Check shortcut resource
+        basedOnDependencyAnalysis: false
+        script: |
+          if [ ! -f "${SRCROOT}/App/Resources/AI Keyboard.shortcut" ]; then
+            echo "error: App/Resources/AI Keyboard.shortcut is missing. Restore it: git checkout -- 'App/Resources/AI Keyboard.shortcut', then run xcodegen generate."
+            exit 1
+          fi
     scheme: {}
   TarjimonKeyboard:
     type: app-extension

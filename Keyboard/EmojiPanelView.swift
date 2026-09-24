@@ -9,8 +9,8 @@ struct EmojiRepresentable: UIViewRepresentable {
     func updateUIView(_ view: EmojiPanelView, context: Context) {}
 }
 
-/// The keyboard's own emoji panel (tried switching to the system emoji keyboard instead; iOS only
-/// allows "next keyboard", which depends on the user's keyboard order — the in-keyboard panel won).
+/// The keyboard's own emoji panel. iOS cannot open the system emoji keyboard from a third-party one —
+/// only "next keyboard", which depends on the user's keyboard order — so the panel lives in the keyboard.
 /// Laid out like the system panel: a horizontally scrolling 5-row grid, the category name on top,
 /// and ABC · categories · ⌫ at the bottom. UIKit, for the same no-lag reason as `KeysUIView`.
 final class EmojiPanelView: UIView, UICollectionViewDataSource, UICollectionViewDelegate {

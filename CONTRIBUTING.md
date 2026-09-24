@@ -33,7 +33,7 @@ o'zgartiring va PR'ga qo'shmang:
 
 - `project.yml` — `DEVELOPMENT_TEAM`, ikkala `PRODUCT_BUNDLE_IDENTIFIER`, ikkala `com.apple.security.application-groups`
 - `Shared/SharedStore.swift` — `AppGroup.id`
-- `Shared/KeyboardOrder.swift` — `tarjimonID` (klaviatura bundle ID'si)
+- `Shared/EnabledKeyboards.swift` — `aiKeyboardID` (klaviatura bundle ID'si)
 - `tools/make_shortcut.py` — `BUNDLE_ID`, `TEAM_ID` (keyin shortcut faylini qayta yarating, README'ga qarang)
 
 `Shared/Secrets.swift` gitignore'da — API kalitlar hech qachon commit qilinmaydi.

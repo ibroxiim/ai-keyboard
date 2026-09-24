@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 /// `@Observable` (not `ObservableObject`) so a keystroke only redraws the views that read what changed —
-/// with `@Published` every insert re-rendered all ~35 keys and the suggestion bar, which made typing lag.
+/// with `@Published` every insert would re-render all ~35 keys and the suggestion bar, and typing would lag.
 /// For the same reason observed properties are only written when their value actually changes.
 @MainActor
 @Observable

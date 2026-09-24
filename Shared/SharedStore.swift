@@ -148,8 +148,8 @@ extension SharedState {
         activeFriend = name
     }
 
-    /// Merges duplicates saved before `Friend.isSamePerson` existed. The list is most-recent-first,
-    /// so the first entry of each person keeps its language and tone; the name becomes the most complete one.
+    /// Merges entries that `Friend.isSamePerson` considers one person (e.g. saved by older builds). The list is
+    /// most-recent-first, so the first entry keeps its language and tone; the name becomes the most complete one.
     mutating func mergeDuplicateFriends() {
         guard let list = friends else { return }
         var merged: [Friend] = []

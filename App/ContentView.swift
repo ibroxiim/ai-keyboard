@@ -66,7 +66,7 @@ struct ContentView: View {
     /// iOS keeps the enabled keyboards in the global defaults; the keyboard's own first
     /// launch is the fallback proof.
     private var keyboardAdded: Bool {
-        KeyboardOrder.tarjimonAdded || state.keyboardFullAccessDate != nil
+        EnabledKeyboards.containsAIKeyboard || state.keyboardFullAccessDate != nil
     }
 
     private var fullAccessOn: Bool { state.keyboardFullAccessDate != nil }
@@ -105,7 +105,7 @@ struct ContentView: View {
     }
 
     /// iOS 27 ignores deep paths (Accessibility/Touch/Back Tap) and only honours the bare
-    /// "App-prefs:" root — Accessibility is on that first screen. Private scheme, fine for personal use.
+    /// "App-prefs:" root — Accessibility is on that first screen. Private scheme: App Store review may reject it.
     private func openSettingsRoot() {
         UIApplication.shared.open(URL(string: "App-prefs:")!) { opened in
             if !opened { UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!) }
@@ -156,8 +156,10 @@ struct ContentView: View {
                 .lineLimit(2...5)
                 .focused($testFieldFocused)
                 .onAppear {
+                    #if DEBUG
                     // `-focusTestField YES` launch argument: opens the keyboard for device screenshots.
                     if UserDefaults.standard.bool(forKey: "focusTestField") { testFieldFocused = true }
+                    #endif
                 }
         }
     }
