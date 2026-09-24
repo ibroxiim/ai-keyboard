@@ -222,7 +222,7 @@ final class KeyboardModel {
     /// ✨ — rewrite whatever is in the field into the conversation language, fitted to the screenshot context.
     func magic() {
         guard hasFullAccess else {
-            flash("✨ uchun Settings'da Tarjimon → Allow Full Access'ni yoqing")
+            flash("✨ uchun Settings'da AI Keyboard → Allow Full Access'ni yoqing")
             return
         }
         let draft = currentText.trimmingCharacters(in: .whitespacesAndNewlines)

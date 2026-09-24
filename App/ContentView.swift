@@ -32,7 +32,7 @@ struct ContentView: View {
     @FocusState private var testFieldFocused: Bool
 
     private var state: SharedState { store.state }
-    private let shortcutFile = Bundle.main.url(forResource: "Tarjimon", withExtension: "shortcut")
+    private let shortcutFile = Bundle.main.url(forResource: "AI Keyboard", withExtension: "shortcut")
 
     var body: some View {
         NavigationStack {
@@ -50,7 +50,7 @@ struct ContentView: View {
                 friendsSection
                 contextSection
             }
-            .navigationTitle("Tarjimon")
+            .navigationTitle("AI Keyboard")
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { store.reload() }
@@ -75,9 +75,9 @@ struct ContentView: View {
     private var setupSection: some View {
         Section {
             step(1, "Klaviaturani qo'shing", done: keyboardAdded,
-                 "Settings → General → Keyboard → Keyboards → Add New Keyboard → Tarjimon")
+                 "Settings → General → Keyboard → Keyboards → Add New Keyboard → AI Keyboard")
             step(2, "Full Access'ni yoqing", done: fullAccessOn,
-                 "Keyboards → Tarjimon → Allow Full Access. Keyin pastdagi maydonda Tarjimon klaviaturasini bir marta oching — shu bilan tasdiqlanadi.")
+                 "Keyboards → AI Keyboard → Allow Full Access. Keyin pastdagi maydonda AI Keyboard klaviaturasini bir marta oching — shu bilan tasdiqlanadi.")
             if !keyboardAdded || !fullAccessOn {
                 Button("Ilova sozlamalarini ochish") {
                     UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
@@ -91,7 +91,7 @@ struct ContentView: View {
                 }
             }
             step(4, "Back Tap'ga ulang", done: shortcutWorks,
-                 "Settings → Accessibility → Touch → Back Tap → Double Tap → Tarjimon. Keyin DM'da orqaga 2× urib sinang.")
+                 "Settings → Accessibility → Touch → Back Tap → Double Tap → AI Keyboard shortcut'i. Keyin DM'da orqaga 2× urib sinang.")
             if !shortcutWorks {
                 Button("Settings'ni ochish (Accessibility)") { openSettingsRoot() }
             }

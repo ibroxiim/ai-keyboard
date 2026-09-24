@@ -1,6 +1,6 @@
 # AI Keyboard — DM uchun AI klaviatura
 
-Telefondagi nomi: **Tarjimon**. Chet ellik do'stlar bilan DM'da yozishish uchun iOS ilova. DM ochiq turganda telefon orqasiga 2 marta urasiz:
+Chet ellik do'stlar bilan DM'da yozishish uchun iOS ilova. DM ochiq turganda telefon orqasiga 2 marta urasiz:
 ilova ekrandagi suhbatni o'qiydi, klaviatura tepasida kelgan xabar tarjimasi va 3 ta tayyor javob chiqadi.
 Yoqmasa — o'zbekcha yozib ✨ ni bosasiz, AI suhbat kontekstiga mos tarjima qilib beradi.
 
@@ -46,10 +46,10 @@ Xcode'da iPhone'ni tanlab Run. Bepul Apple ID bilan:
 
 ## Telefonda sozlash
 
-1. Settings → General → Keyboard → Keyboards → Add New Keyboard → **Tarjimon**
-2. Tarjimon → **Allow Full Access** (AI internet orqali ishlaydi; harf yozish usiz ham ishlaydi)
-3. Ilovada **Shortcut'ni qo'shish** → Shortcuts → **Add Shortcut** (tayyor fayl: `App/Resources/Tarjimon.shortcut`)
-4. Settings → Accessibility → Touch → **Back Tap** → Double Tap → Tarjimon
+1. Settings → General → Keyboard → Keyboards → Add New Keyboard → **AI Keyboard**
+2. AI Keyboard → **Allow Full Access** (AI internet orqali ishlaydi; harf yozish usiz ham ishlaydi)
+3. Ilovada **Shortcut'ni qo'shish** → Shortcuts → **Add Shortcut** (tayyor fayl: `App/Resources/AI Keyboard.shortcut`)
+4. Settings → Accessibility → Touch → **Back Tap** → Double Tap → **AI Keyboard** shortcut'i
 
 Ilova sozlash qadamlarini o'zi belgilaydi: 1 — `AppleKeyboards`, 2 — klaviatura Full Access bilan ochilganda,
 3–4 — shortcut birinchi marta ishlaganda.
@@ -63,7 +63,7 @@ Bundle ID, team yoki intent nomi o'zgarsa (`tools/make_shortcut.py` ichida):
 
 ```bash
 python3 tools/make_shortcut.py
-shortcuts sign --mode anyone --input build/Tarjimon-unsigned.shortcut --output App/Resources/Tarjimon.shortcut
+shortcuts sign --mode anyone --input build/AIKeyboard-unsigned.shortcut --output "App/Resources/AI Keyboard.shortcut"
 ```
 
 ## Cheklovlar

@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 struct AnalyzeChatIntent: AppIntent {
     static var title: LocalizedStringResource = "Suhbatni tahlil qil"
     static var description = IntentDescription(
-        "DM skrinshotini o'qiydi va kelgan xabar tarjimasi bilan javob takliflarini Tarjimon klaviaturasiga tayyorlaydi.")
+        "DM skrinshotini o'qiydi va kelgan xabar tarjimasi bilan javob takliflarini AI Keyboard klaviaturasiga tayyorlaydi.")
     static var openAppWhenRun = false
 
     @Parameter(title: "Skrinshot", supportedContentTypes: [.image])

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Builds the Back Tap shortcut: [Take Screenshot] -> [Tarjimon: Suhbatni tahlil qil].
+"""Builds the Back Tap shortcut: [Take Screenshot] -> [AI Keyboard: Suhbatni tahlil qil].
 
 Output is unsigned; sign it on a Mac signed into iCloud:
-  shortcuts sign --mode anyone --input build/Tarjimon-unsigned.shortcut --output App/Resources/Tarjimon.shortcut
+  shortcuts sign --mode anyone --input build/AIKeyboard-unsigned.shortcut --output "App/Resources/AI Keyboard.shortcut"
+The imported shortcut is named after the file.
 """
 import os
 import plistlib
@@ -27,7 +28,7 @@ actions = [
             "AppIntentDescriptor": {
                 "AppIntentIdentifier": INTENT,
                 "BundleIdentifier": BUNDLE_ID,
-                "Name": "Tarjimon",
+                "Name": "AI Keyboard",
                 "TeamIdentifier": TEAM_ID,
             },
             # Parameter key = the @Parameter property name in AnalyzeChatIntent.
@@ -54,7 +55,7 @@ shortcut = {
     "WFQuickActionSurfaces": [],
 }
 
-out = os.path.join(os.path.dirname(__file__), "..", "build", "Tarjimon-unsigned.shortcut")
+out = os.path.join(os.path.dirname(__file__), "..", "build", "AIKeyboard-unsigned.shortcut")
 os.makedirs(os.path.dirname(out), exist_ok=True)
 with open(out, "wb") as f:
     plistlib.dump(shortcut, f, fmt=plistlib.FMT_BINARY)

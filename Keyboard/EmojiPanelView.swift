@@ -9,7 +9,7 @@ struct EmojiRepresentable: UIViewRepresentable {
     func updateUIView(_ view: EmojiPanelView, context: Context) {}
 }
 
-/// Tarjimon's own emoji panel (tried switching to the system emoji keyboard instead; iOS only
+/// The keyboard's own emoji panel (tried switching to the system emoji keyboard instead; iOS only
 /// allows "next keyboard", which depends on the user's keyboard order — the in-keyboard panel won).
 /// Laid out like the system panel: a horizontally scrolling 5-row grid, the category name on top,
 /// and ABC · categories · ⌫ at the bottom. UIKit, for the same no-lag reason as `KeysUIView`.
