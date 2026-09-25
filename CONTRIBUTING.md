@@ -39,6 +39,19 @@ o'zgartiring va PR'ga qo'shmang:
 
 `ios/Shared/Secrets.swift` gitignore'da — API kalitlar hech qachon commit qilinmaydi.
 
+## Android
+
+```bash
+cd android
+./gradlew :app:testDebugUnitTest      # JVM testlar (Gemini'ga murojaat qilmaydi)
+./gradlew :app:assembleDebug          # app/build/outputs/apk/debug/app-debug.apk
+LIVE_GEMINI=1 ./gradlew :app:testDebugUnitTest --tests '*GeminiLiveTest'   # haqiqiy Gemini (kalit local.properties'da)
+```
+
+Emulyatorda: `adb shell ime enable/set com.ibrokhim.aikeyboard/.ime.AiKeyboardService`, ilovadagi "Demo chat"da
+📖 ni sinang. Debug build `AIKeys` logcat tegida tugma koordinatalarini yozadi — `android/tools/adb-type.py "matn"`
+ular orqali matnni tugmalar bilan yozadi. Kod va testlarda faqat to'qima ismlar va suhbatlar.
+
 ## Sinash
 
 Klaviatura kengaytmasini sinashning o'z cheklovlari bor:

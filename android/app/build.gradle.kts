@@ -15,6 +15,12 @@ val localProperties = Properties().apply {
     if (file.exists()) file.inputStream().use { load(it) }
 }
 
+// Release signing: the keystore lives outside the repo, its passwords in the gitignored keystore.properties.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
 android {
     namespace = "com.ibrokhim.aikeyboard"
     compileSdk = 36
@@ -25,6 +31,17 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0-beta"
+    }
+
+    signingConfigs {
+        if (keystoreProperties.isNotEmpty()) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
     }
 
     buildFeatures {
@@ -39,6 +56,7 @@ android {
         release {
             buildConfigField("String", "GEMINI_API_KEY", "\"\"")
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
