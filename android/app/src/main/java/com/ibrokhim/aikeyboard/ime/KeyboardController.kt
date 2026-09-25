@@ -34,6 +34,10 @@ class KeyboardController(
     var showsGlobe = false
     var emojiKey = false
 
+    /** The emoji panel replaces the keys: the 😀 key opens it, its ABC button closes it. */
+    var showsEmoji = false
+        private set
+
     /** Called after every state change the keys should redraw for. */
     var onChange: () -> Unit = {}
 
@@ -62,9 +66,25 @@ class KeyboardController(
                 onChange()
             }
             Key.Globe -> target.switchKeyboard()
-            Key.Emoji -> Unit // the emoji panel arrives in milestone 4
+            Key.Emoji -> {
+                showsEmoji = true
+                onChange()
+            }
             is Key.LayerSwitch -> setLayer(key.layer)
         }
+    }
+
+    fun closeEmoji() {
+        if (showsEmoji) {
+            showsEmoji = false
+            onChange()
+        }
+    }
+
+    /** Emoji go in as they are; the panel stays open for the next one. */
+    fun insertEmoji(emoji: String) {
+        target.commit(emoji)
+        autoCapitalize()
     }
 
     fun moveCursor(offset: Int) = target.moveCursor(offset)

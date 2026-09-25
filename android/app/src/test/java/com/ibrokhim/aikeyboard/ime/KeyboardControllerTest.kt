@@ -117,4 +117,18 @@ class KeyboardControllerTest {
         controller.press(Key.Backspace)
         assertEquals("a", target.text.toString())
     }
+
+    @Test fun emojiKeyOpensThePanelAndAbcClosesIt() {
+        controller.press(Key.Emoji)
+        assertEquals(true, controller.showsEmoji)
+        controller.closeEmoji()
+        assertEquals(false, controller.showsEmoji)
+    }
+
+    @Test fun emojiGoesInAsIs() {
+        controller.autoCapitalize()
+        controller.insertEmoji("😀")
+        controller.press(Key.Text("x"))
+        assertEquals("😀x", target.text.toString())
+    }
 }
