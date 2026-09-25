@@ -23,6 +23,11 @@ class KeyboardControllerTest {
         override fun switchKeyboard() {
             switches++
         }
+        override fun currentText() = text.toString()
+        override fun replaceAll(text: String) {
+            this.text.clear()
+            this.text.append(text)
+        }
     }
 
     private var now = 10_000L

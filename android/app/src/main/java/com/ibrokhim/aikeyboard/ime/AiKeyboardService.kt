@@ -67,6 +67,23 @@ class AiKeyboardService : InputMethodService() {
             }
         }
 
+        override fun currentText(): String {
+            val ic = currentInputConnection ?: return ""
+            val before = ic.getTextBeforeCursor(MAX_FIELD, 0)?.toString().orEmpty()
+            val after = ic.getTextAfterCursor(MAX_FIELD, 0)?.toString().orEmpty()
+            return before + after
+        }
+
+        override fun replaceAll(text: String) {
+            val ic = currentInputConnection ?: return
+            val before = ic.getTextBeforeCursor(MAX_FIELD, 0)?.length ?: 0
+            val after = ic.getTextAfterCursor(MAX_FIELD, 0)?.length ?: 0
+            ic.beginBatchEdit()
+            ic.deleteSurroundingText(before, after)
+            ic.commitText(text, 1) // also replaces a selection, if there was one
+            ic.endBatchEdit()
+        }
+
         override val autoCapitalize: Boolean
             get() = EditorRules.autoCapitalize(editorInfo?.inputType ?: 0)
     }
@@ -119,5 +136,9 @@ class AiKeyboardService : InputMethodService() {
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         controller.autoCapitalize()
+    }
+
+    private companion object {
+        const val MAX_FIELD = 10_000
     }
 }

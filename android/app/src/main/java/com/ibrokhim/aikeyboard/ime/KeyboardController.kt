@@ -9,6 +9,12 @@ interface InputTarget {
     fun enter()
     fun switchKeyboard()
 
+    /** The whole field — in a DM that is just the draft. */
+    fun currentText(): String
+
+    /** Replaces the whole field: a picked reply or ✨ variant replaces the draft. */
+    fun replaceAll(text: String)
+
     /** False for passwords, emails, URLs and fields that do not ask for capitals. */
     val autoCapitalize: Boolean
 }
