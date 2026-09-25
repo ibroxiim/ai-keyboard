@@ -6,7 +6,7 @@
 
 **Architecture:** Hammasi Android UI'ga bog'liq emas: `data/` (modellar, holat, JSON fayl + `StateFlow`), `ai/` (`LlmClient` interfeysi, `GeminiClient` + `GeminiTransport`, `Prompts`, `Translator`, `ChatAnalysisService`). Transport interfeys orqali almashtiriladi — testlarda soxta, ilovada OkHttp. M3 bularni klaviatura va Accessibility xizmatiga ulaydi. Spec: `docs/superpowers/specs/2026-09-25-android-version-design.md` (2-bosqich).
 
-**Tech Stack:** Kotlin 2.3.20, kotlinx-serialization-json 1.11.0, kotlinx-coroutines 1.11.0 (+ coroutines-test), OkHttp 5.5.0, JUnit 4.13.2, kotlin-test.
+**Tech Stack:** Kotlin 2.3.20, kotlinx-serialization-json 1.11.0, kotlinx-coroutines 1.11.0 (+ coroutines-test), OkHttp 4.12.0 (5.x compileSdk 37 talab qiladi), JUnit 4.13.2, kotlin-test.
 
 ## Global Constraints
 
@@ -117,7 +117,7 @@ kotlin {
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
-    implementation("com.squareup.okhttp3:okhttp:5.5.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.3.20")
@@ -1093,7 +1093,7 @@ class OkHttpGeminiTransport(private val client: OkHttpClient = OkHttpClient()) :
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    val result = response.use { HttpResponse(it.code, it.body.string()) }
+                    val result = response.use { HttpResponse(it.code, it.body?.string().orEmpty()) }
                     if (continuation.isActive) continuation.resume(result)
                 }
             })
