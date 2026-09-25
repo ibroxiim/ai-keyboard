@@ -81,4 +81,12 @@ class SharedStateTest {
         assertEquals("x", state.recentError(now + 119_000))
         assertNull(state.recentError(now + 120_000))
     }
+
+    @Test fun forgetFriendAlsoClearsTheActiveTarget() {
+        val state = SharedState(activeFriend = "Emma", friends = listOf(Friend("Emma", "English", "", now), Friend("Minji", "Korean", "", now)))
+        val forgotten = state.forgetFriend("Emma")
+        assertEquals(listOf("Minji"), forgotten.friends.map { it.name })
+        assertNull(forgotten.activeFriend)
+        assertEquals("Emma", state.forgetFriend("Minji").activeFriend)
+    }
 }

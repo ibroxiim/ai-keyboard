@@ -59,6 +59,9 @@ data class SharedState(
         return copy(targetLanguage = analysis.language, friends = list, activeFriend = name)
     }
 
+    fun forgetFriend(name: String): SharedState =
+        copy(friends = friends.filterNot { it.name == name }, activeFriend = activeFriend.takeUnless { it == name })
+
     /**
      * Merges entries `Friend.isSamePerson` considers one person. The list is most-recent-first, so the
      * first entry keeps its language and tone; the name becomes the most complete one.
