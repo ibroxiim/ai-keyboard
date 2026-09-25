@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - M1 cheklovlari amal qiladi (package, SDK, JDK/Gradle, commit qoidalari, `git commit -- <paths>`, branch `android`, push yo'q).
-- Modellar: `gemini-3.5-flash-lite` asosiy, `gemini-3.5-flash` zaxira. Asosiy 5 s da javob bermasa — zaxiraga parallel so'rov, birinchi muvaffaqiyatli javob olinadi. 429/5xx, timeout, tarmoq xatosi va bo'sh javob — zaxiraga o'tadi; 4xx (429 dan tashqari) — o'tmaydi. Har urinishga 20 s.
+- Modellar: `gemini-3.5-flash-lite` asosiy, `gemini-3.5-flash` zaxira. Asosiy 5 s da javob bermasa — zaxiraga parallel so'rov, birinchi muvaffaqiyatli javob olinadi. 429/5xx, timeout, tarmoq xatosi va bo'sh javob — zaxiraga o'tadi; 4xx (429 dan tashqari) — o'tmaydi. Har urinishga 30 s (dastlab 20 s edi; jonli o'lchovda kichik so'rovlar ham 15 s gacha oldi).
 - `thinkingLevel: minimal`, `responseMimeType: application/json`, JSON sxemalar va prompt matnlari iOS'dan (`Shared/Translator.swift`) aynan.
 - Kontekst umri 15 daqiqa, tahlil timeout'i 60 s, xato ko'rinishi 120 s, do'stlar ro'yxati max 8 (iOS `SharedStore`).
 - API kalit: `android/local.properties` → `gemini.apiKey` → `BuildConfig.GEMINI_API_KEY`. Kalit hech qachon commit qilinmaydi, chiqishga (log, terminal) yozilmaydi. `GeminiClient` kalitni `() -> String` orqali oladi — M5 da foydalanuvchi kiritgan kalitga almashtirish uchun (ommaviy APK ichiga kalit qo'yilmaydi).
@@ -759,8 +759,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" -- android
   sealed class GeminiException : Exception { MissingKey; Http(code, detail); Empty; Timeout; Network(cause) }
   data class HttpResponse(val code: Int, val body: String)
   interface GeminiTransport { suspend fun post(model: String, apiKey: String, body: String): HttpResponse }
-  class GeminiClient(transport, apiKey: () -> String, models = GeminiClient.MODELS, hedgeAfterMs = 5_000, attemptTimeoutMs = 20_000) : LlmClient
-  class OkHttpGeminiTransport(client: OkHttpClient = OkHttpClient()) : GeminiTransport
+  class GeminiClient(transport, apiKey: () -> String, models = GeminiClient.MODELS, hedgeAfterMs = 5_000, attemptTimeoutMs = 30_000) : LlmClient
+  class OkHttpGeminiTransport(client: OkHttpClient = OkHttpGeminiTransport.defaultClient) : GeminiTransport
   ```
 
 - [ ] **Step 1: Failing test**
@@ -845,7 +845,7 @@ class GeminiClientTest {
     @Test fun hangingModelsTimeOut() = runTest {
         val transport = FakeTransport { awaitCancellation() }
         assertFailsWith<GeminiException.Timeout> { client(transport).generate("sys", emptyList(), schema) }
-        assertEquals(25_000L, testScheduler.currentTime) // hedge at 5 s, fallback's own 20 s
+        assertEquals(35_000L, testScheduler.currentTime) // hedge at 5 s, fallback's own 30 s
     }
 
     @Test fun missingKeyFailsWithoutACall() = runTest {
@@ -963,7 +963,7 @@ class GeminiClient(
     private val apiKey: () -> String,
     private val models: List<String> = MODELS,
     private val hedgeAfterMs: Long = 5_000,
-    private val attemptTimeoutMs: Long = 20_000,
+    private val attemptTimeoutMs: Long = 30_000,
 ) : LlmClient {
 
     override suspend fun generate(system: String, parts: List<Part>, schema: JsonObject): String {
@@ -1065,6 +1065,7 @@ class GeminiClient(
 package com.ibrokhim.aikeyboard.ai
 
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -1076,7 +1077,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 
-class OkHttpGeminiTransport(private val client: OkHttpClient = OkHttpClient()) : GeminiTransport {
+class OkHttpGeminiTransport(private val client: OkHttpClient = defaultClient) : GeminiTransport {
     override suspend fun post(model: String, apiKey: String, body: String): HttpResponse {
         val request = Request.Builder()
             .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent")
@@ -1098,6 +1099,18 @@ class OkHttpGeminiTransport(private val client: OkHttpClient = OkHttpClient()) :
                 }
             })
         }
+    }
+
+    companion object {
+        /**
+         * OkHttp's default 10 s read timeout would cut off a slow-but-fine answer before GeminiClient's own
+         * hedge and 20 s attempt timeout decide; those own the timing, OkHttp only guards against hangs.
+         */
+        val defaultClient: OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
     }
 }
 ```
@@ -1644,7 +1657,8 @@ class GeminiLiveTest {
 
     @Test fun transcriptReadingWorksEndToEnd() = runBlocking {
         assumeTrue(key.isNotBlank() && System.getenv("LIVE_GEMINI") != null)
-        val translator = Translator(GeminiClient(OkHttpGeminiTransport(), { key }))
+        // Generous timeout: this checks the prompt and parsing, not today's API latency (often 5–25 s).
+        val translator = Translator(GeminiClient(OkHttpGeminiTransport(), { key }, attemptTimeoutMs = 45_000))
         val lines = listOf(
             "[TOP] Emma",
             "[TOP] Active now",
@@ -1659,6 +1673,7 @@ class GeminiLiveTest {
             println("quick after ${System.currentTimeMillis() - started} ms: ${it.lastIncomingUz}")
         }
         println("full after ${System.currentTimeMillis() - started} ms: ${result.analysis.suggestions.map { it.text }}")
+        result.partialError?.let { println("partial error: ${it::class.simpleName}: ${it.message} / ${it.cause}") }
         assertEquals("Emma", result.analysis.partner)
         assertEquals("English", result.analysis.language)
         assertEquals(3, result.analysis.suggestions.size)

@@ -76,7 +76,7 @@ class GeminiClientTest {
     @Test fun hangingModelsTimeOut() = runTest {
         val transport = FakeTransport { awaitCancellation() }
         assertFailsWith<GeminiException.Timeout> { client(transport).generate("sys", emptyList(), schema) }
-        assertEquals(25_000L, testScheduler.currentTime) // hedge at 5 s, fallback's own 20 s
+        assertEquals(35_000L, testScheduler.currentTime) // hedge at 5 s, fallback's own 30 s
     }
 
     @Test fun missingKeyFailsWithoutACall() = runTest {

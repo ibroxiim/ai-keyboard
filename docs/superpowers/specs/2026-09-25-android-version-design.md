@@ -147,7 +147,7 @@ rangi faqat ✨ tugmasi, faol chiplar va 📖 da. Dinamik rang (wallpaper) ishla
 - **Hedging:** asosiy so'rov 5 soniyada javob bermasa, zaxira modelga parallel so'rov ketadi; birinchi muvaffaqiyatli
   javob olinadi, ikkinchisi bekor qilinadi. 429/500/503, timeout va tarmoq xatolari ham darhol zaxiraga o'tadi
   (iOS'da timeout zaxiraga o'tmaydi — o'sha xatoni takrorlamaslik uchun).
-- Har urinishga 20 soniya timeout; ikkalasi ham yiqilsa — xato xabari va "Qayta urinish" chipi.
+- Har urinishga 30 soniya timeout (jonli o'lchovda kichik so'rovlar ham 15 s gacha oldi); ikkalasi ham yiqilsa — xato xabari va "Qayta urinish" chipi.
 - `thinkingLevel: minimal`, `responseMimeType: application/json`, JSON sxemalar iOS'dan.
 - HTTP: OkHttp; JSON: kotlinx.serialization; parallellik: coroutines.
 

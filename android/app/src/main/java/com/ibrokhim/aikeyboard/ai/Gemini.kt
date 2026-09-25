@@ -51,7 +51,7 @@ class GeminiClient(
     private val apiKey: () -> String,
     private val models: List<String> = MODELS,
     private val hedgeAfterMs: Long = 5_000,
-    private val attemptTimeoutMs: Long = 20_000,
+    private val attemptTimeoutMs: Long = 30_000,
 ) : LlmClient {
 
     override suspend fun generate(system: String, parts: List<Part>, schema: JsonObject): String {
