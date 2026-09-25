@@ -6,10 +6,12 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.media.AudioManager
 import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import com.ibrokhim.aikeyboard.BuildConfig
@@ -71,6 +73,12 @@ class KeysView(context: Context, private val controller: KeyboardController) : V
 
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
+    private val balloonText = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
+    private val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+    /** The letter balloon rises this far above the key and is this much wider on each side (iOS style). */
+    private val balloonRise = dp(54f)
+    private val balloonGrow = dp(10f)
 
     init {
         setBackgroundColor(theme.background)
@@ -140,6 +148,11 @@ class KeysView(context: Context, private val controller: KeyboardController) : V
             canvas.drawRoundRect(cap.frame, radius, radius, fill)
             drawLabel(canvas, cap, isEnter)
         }
+        // Balloons last, so they cover their neighbours and, on the top row, the bar above.
+        for (pointer in pointers) {
+            val cap = caps.getOrNull(pointer.index) ?: continue
+            if (cap.key is Key.Text) drawBalloon(canvas, cap)
+        }
     }
 
     /** Keys drawn with a Material icon; everything else gets a text label. */
@@ -196,6 +209,36 @@ class KeysView(context: Context, private val controller: KeyboardController) : V
         canvas.drawText(label(cap.key), cap.frame.centerX(), y, text)
     }
 
+    private fun drawBalloon(canvas: Canvas, cap: Cap) {
+        val frame = cap.frame
+        val rect = RectF(
+            (frame.left - balloonGrow).coerceAtLeast(0f),
+            frame.top - balloonRise,
+            (frame.right + balloonGrow).coerceAtMost(width.toFloat()),
+            frame.bottom,
+        )
+        fill.color = theme.key
+        fill.setShadowLayer(dp(4f), 0f, dp(1f), 0x40000000)
+        canvas.drawRoundRect(rect, radius * 1.5f, radius * 1.5f, fill)
+        fill.clearShadowLayer()
+        balloonText.textSize = dp(32f)
+        balloonText.color = theme.label
+        val centerY = frame.top - balloonRise / 2 + dp(4f)
+        canvas.drawText(label(cap.key), rect.centerX(), centerY - (balloonText.descent() + balloonText.ascent()) / 2, balloonText)
+    }
+
+    /** Follows the system: "Haptic feedback" for the tap, "Touch sounds" for the click. */
+    private fun feedback(key: Key) {
+        performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        val effect = when (key) {
+            Key.Space -> AudioManager.FX_KEYPRESS_SPACEBAR
+            Key.Backspace -> AudioManager.FX_KEYPRESS_DELETE
+            Key.Enter -> AudioManager.FX_KEYPRESS_RETURN
+            else -> AudioManager.FX_KEYPRESS_STANDARD
+        }
+        audio.playSoundEffect(effect, -1f)
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         ensureLayout()
@@ -234,13 +277,15 @@ class KeysView(context: Context, private val controller: KeyboardController) : V
 
     /** Letters type on touch-down so fast two-thumb typing (rollover) never drops a key. */
     private fun onDown(pointer: Pointer) {
-        when (val key = caps[pointer.index].key) {
+        val key = caps[pointer.index].key
+        feedback(key)
+        when (key) {
             is Key.Text, Key.Shift -> controller.press(key)
             Key.Backspace -> {
                 controller.press(key)
                 startRepeat()
             }
-            else -> Unit // space, enter, layer, alphabet and globe act on release
+            else -> Unit // space, enter, layer, alphabet and emoji act on release
         }
     }
 
