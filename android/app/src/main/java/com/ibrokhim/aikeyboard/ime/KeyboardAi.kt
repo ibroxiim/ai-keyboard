@@ -6,6 +6,7 @@ import com.ibrokhim.aikeyboard.ai.Translator
 import com.ibrokhim.aikeyboard.data.Friend
 import com.ibrokhim.aikeyboard.data.SharedStore
 import com.ibrokhim.aikeyboard.data.Suggestion
+import com.ibrokhim.aikeyboard.reader.ChatLines
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -20,8 +21,11 @@ interface ChatSource {
     /** False while the chat reader service is switched off. */
     val available: Boolean
 
-    /** The chat in [packageName]'s window, or null if nothing readable is on screen. */
-    suspend fun read(packageName: String): ChatInput?
+    /**
+     * The chat in [packageName]'s window, or null if nothing readable is on screen. A screenshot is the
+     * fallback for apps without readable text — only when [allowScreenshot] (never for auto-read).
+     */
+    suspend fun read(packageName: String, allowScreenshot: Boolean = true): ChatInput?
 }
 
 /** Keyboard-local AI state; the shared part (context, friends, target) lives in `SharedStore`. */
@@ -30,6 +34,8 @@ data class AiUiState(
     val rewriting: Boolean = false,
     val notice: String? = null,
     val pickerOpen: Boolean = false,
+    /** The full conversation replaces the keys (tap on the translation). */
+    val detailsOpen: Boolean = false,
 )
 
 object Notices {
@@ -70,21 +76,44 @@ class KeyboardAi(
             flash(Notices.UNREADABLE)
             return
         }
-        state.update { it.copy(variants = emptyList(), pickerOpen = false) }
+        state.update { it.copy(variants = emptyList(), pickerOpen = false, detailsOpen = false) }
         readJob?.cancel()
         readJob = scope.launch {
-            val input = chatSource.read(packageName)
+            val input = chatSource.read(packageName, allowScreenshot = true)
             if (input == null) {
                 flash(Notices.UNREADABLE)
                 return@launch
             }
-            try {
-                analysis.run(input)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // ChatAnalysisService already put the error into the store; the bar shows it.
-            }
+            analyse(input)
+        }
+    }
+
+    /**
+     * Keyboard opened in a messenger with auto-read on: read the chat's text (no screenshot) and analyse it,
+     * unless it is the same chat whose analysis is still on screen.
+     */
+    fun autoRead(packageName: String?, inputType: Int) {
+        val shared = store.value
+        if (!AutoRead.eligible(packageName, inputType, shared.autoRead)) return
+        if (packageName == null || !chatSource.available || shared.isAnalyzing(clock())) return
+        readJob?.cancel()
+        readJob = scope.launch {
+            delay(AUTO_READ_DELAY_MS) // let the app settle behind the keyboard's slide-in
+            val input = chatSource.read(packageName, allowScreenshot = false) as? ChatInput.Transcript ?: return@launch
+            val hash = ChatLines.hash(input.lines)
+            if (!AutoRead.isNew(hash, store.value, clock())) return@launch
+            store.update { it.copy(lastReadHash = hash) }
+            analyse(input)
+        }
+    }
+
+    private suspend fun analyse(input: ChatInput) {
+        try {
+            analysis.run(input)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // ChatAnalysisService already put the error into the store; the bar shows it.
         }
     }
 
@@ -125,8 +154,14 @@ class KeyboardAi(
 
     fun dismissContext() {
         store.update { it.copy(context = null, contextDate = null) }
-        state.update { it.copy(variants = emptyList()) }
+        state.update { it.copy(variants = emptyList(), detailsOpen = false) }
     }
+
+    fun openDetails() {
+        if (store.value.freshContext(clock()) != null) state.update { it.copy(detailsOpen = true) }
+    }
+
+    fun closeDetails() = state.update { it.copy(detailsOpen = false) }
 
     fun togglePicker() = state.update { it.copy(pickerOpen = !it.pickerOpen) }
 
@@ -151,5 +186,6 @@ class KeyboardAi(
 
     companion object {
         const val NOTICE_MS = 4_000L
+        const val AUTO_READ_DELAY_MS = 300L
     }
 }

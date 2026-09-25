@@ -1,5 +1,6 @@
 package com.ibrokhim.aikeyboard.ime
 
+import android.text.InputType
 import com.ibrokhim.aikeyboard.ai.ChatAnalysisService
 import com.ibrokhim.aikeyboard.ai.ChatInput
 import com.ibrokhim.aikeyboard.ai.LlmClient
@@ -17,7 +18,9 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -44,31 +47,37 @@ class KeyboardAiTest {
     }
 
     private class Source(var input: ChatInput? = null) : ChatSource {
-        val asked = mutableListOf<String>()
+        val asked = mutableListOf<Pair<String, Boolean>>()
         override var available = true
-        override suspend fun read(packageName: String): ChatInput? {
-            asked.add(packageName)
+        override suspend fun read(packageName: String, allowScreenshot: Boolean): ChatInput? {
+            asked.add(packageName to allowScreenshot)
             return input
         }
     }
 
     private class Llm : LlmClient {
-        override suspend fun generate(system: String, parts: List<Part>, schema: JsonObject): String = when {
-            system.contains("- partner:") ->
-                """{"partner":"Emma","language":"English","tone":"casual","last_incoming_uz":"Bo'shmisan?"}"""
-            system.contains("- suggestions:") ->
-                """{"summary_uz":"x","transcript":[{"from":"them","text":"u free?"}],"suggestions":[{"text":"yes!","uz":"ha!"}]}"""
-            else -> """{"variants":[{"text":"we're getting plov on saturday","uz":"Shanba kuni osh yeymiz"}]}"""
+        var calls = 0
+        override suspend fun generate(system: String, parts: List<Part>, schema: JsonObject): String {
+            calls++
+            return when {
+                system.contains("- partner:") ->
+                    """{"partner":"Emma","language":"English","tone":"casual","last_incoming_uz":"Bo'shmisan?"}"""
+                system.contains("- suggestions:") ->
+                    """{"summary_uz":"x","transcript":[{"from":"them","text":"u free?"}],"suggestions":[{"text":"yes!","uz":"ha!"}]}"""
+                else -> """{"variants":[{"text":"we're getting plov on saturday","uz":"Shanba kuni osh yeymiz"}]}"""
+            }
         }
     }
 
     private val field = Field()
-    private val source = Source(input = ChatInput.Transcript(listOf("[TOP] Emma", "[L] u free?", "[R] maybe")))
+    private val source = Source(ChatInput.Transcript(listOf("[TOP] Emma", "[L] u free?", "[R] maybe")))
+    private val llm = Llm()
     private var setupOpened = 0
+    private val textField = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
 
     private fun TestScope.ai(): Pair<KeyboardAi, SharedStore> {
         val store = SharedStore(File(folder.root, "state.json"))
-        val translator = Translator(Llm())
+        val translator = Translator(llm)
         val analysis = ChatAnalysisService(store, translator) { 1_000 }
         return KeyboardAi(store, translator, analysis, field, source, this, { 1_000 }) { setupOpened++ } to store
     }
@@ -77,7 +86,7 @@ class KeyboardAiTest {
         val (ai, store) = ai()
         ai.readChat("com.example.chat")
         advanceUntilIdle()
-        assertEquals(listOf("com.example.chat"), source.asked)
+        assertEquals(listOf("com.example.chat" to true), source.asked)
         assertEquals("Emma", store.value.context?.partner)
         assertEquals("yes!", store.value.context?.suggestions?.single()?.text)
     }
@@ -132,10 +141,45 @@ class KeyboardAiTest {
         assertEquals("Turkish", store.value.targetLanguage)
     }
 
-    @Test fun dismissContextClearsIt() = runTest {
+    @Test fun detailsOpenOnlyWithAFreshContextAndCloseWithIt() = runTest {
         val (ai, store) = ai()
+        ai.openDetails()
+        assertFalse(ai.ui.value.detailsOpen)
         store.update { it.copy(context = ChatAnalysis(partner = "Emma"), contextDate = 1_000) }
+        ai.openDetails()
+        assertTrue(ai.ui.value.detailsOpen)
         ai.dismissContext()
         assertNull(store.value.context)
+        assertFalse(ai.ui.value.detailsOpen)
+    }
+
+    @Test fun autoReadAnalysesAnEligibleChatOnceUntilItChanges() = runTest {
+        val (ai, store) = ai()
+        store.update { it.copy(autoRead = true) }
+        ai.autoRead("com.whatsapp", textField)
+        advanceUntilIdle()
+        assertEquals(listOf("com.whatsapp" to false), source.asked) // text only, never a screenshot
+        assertEquals("Emma", store.value.context?.partner)
+        assertNotNull(store.value.lastReadHash)
+        assertEquals(2, llm.calls)
+
+        ai.autoRead("com.whatsapp", textField)
+        advanceUntilIdle()
+        assertEquals(2, llm.calls) // same chat, context still fresh: no new request
+
+        source.input = ChatInput.Transcript(listOf("[TOP] Emma", "[L] u free?", "[R] maybe", "[L] ??"))
+        ai.autoRead("com.whatsapp", textField)
+        advanceUntilIdle()
+        assertEquals(4, llm.calls)
+    }
+
+    @Test fun autoReadStaysQuietWhenOffOrOutsideMessengers() = runTest {
+        val (ai, store) = ai()
+        ai.autoRead("com.whatsapp", textField)
+        store.update { it.copy(autoRead = true) }
+        ai.autoRead("com.android.chrome", textField)
+        advanceUntilIdle()
+        assertEquals(emptyList<Pair<String, Boolean>>(), source.asked)
+        assertEquals(0, llm.calls)
     }
 }

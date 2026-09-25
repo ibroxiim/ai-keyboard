@@ -39,6 +39,11 @@ object EditorRules {
         InputType.TYPE_TEXT_VARIATION_URI,
     )
 
+    /** A plain text field — not a password, email address or URL. */
+    fun isChatField(inputType: Int): Boolean =
+        (inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT &&
+            (inputType and InputType.TYPE_MASK_VARIATION) !in noCapsVariations
+
     /** Only text fields that ask for capitals get them, like the system keyboard. */
     fun autoCapitalize(inputType: Int): Boolean {
         if ((inputType and InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT) return false

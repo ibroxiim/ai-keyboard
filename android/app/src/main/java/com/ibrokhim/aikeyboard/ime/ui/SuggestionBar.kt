@@ -74,7 +74,7 @@ private fun StatusRow(status: Status, colors: BarColors, ai: KeyboardAi, onRead:
             val who = status.partner.ifEmpty { "Suhbatdosh" }
             Text(
                 "💬 $who: ${status.text}", color = colors.ink, fontSize = 13.sp, lineHeight = 16.sp,
-                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).clickable { ai.openDetails() },
             )
             Close(colors) { ai.dismissContext() }
         }
