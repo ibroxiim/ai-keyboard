@@ -1557,6 +1557,19 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" -- android
 
 ---
 
+## Bajarish paytidagi o'zgarishlar (emulyator tekshiruvidan keyin)
+
+- Funksiya tugmalari (`⇧ ⌫ ⏎ 🌐` va boshqalar) unicode belgi o'rniga Material vektor ikonkalar
+  (`res/drawable/key_*.xml`, Apache 2.0): tizim shriftida `⏎` yo'q edi. `EnterAction` endi faqat enum,
+  `KeysView.enterLabel` o'rniga `KeysView.enterAction`.
+- `KeysView` navigatsiya paneli balandligini pastdan qo'shadi (`WindowInsets.Type.navigationBars()`):
+  Android 15+ da klaviatura oynasi ekran chetigacha chiziladi va pastki qator navigatsiya chizig'i ostida qolardi.
+- `deleteBackward` — `KEYCODE_DEL` o'rniga `deleteSurroundingText` (oxirgi grafema uzunligi,
+  `TextRules.lastGraphemeLength` + test): key event `commitText`dan keyin yetib kelib, ikki probel
+  "word ." berardi. Tanlangan matn `commitText("")` bilan o'chadi.
+- Debug layout log'i klaviatura har ko'ringanda ham yoziladi (`onWindowShown` → `logLayoutSoon`).
+- Kirill (КИР/LAT) M1 ga kirdi — faqat jadval va bitta toggle edi. Testlar soni: 27.
+
 ## Keyingi rejalar
 
 M2 (ma'lumot va AI), M3 (chatni o'qish, panel, ✨), M4 (emoji, popup, tebranish, tafsilotlar, avtomatik o'qish), M5 (sozlash ekrani, README, APK) — har biri shu spec asosida alohida reja faylida.

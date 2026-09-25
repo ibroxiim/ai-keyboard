@@ -1,5 +1,6 @@
 package com.ibrokhim.aikeyboard.ime
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -31,5 +32,13 @@ class TextRulesTest {
         assertFalse(TextRules.isDoubleSpace("salom", 100))
         assertFalse(TextRules.isDoubleSpace("salom. ", 100))
         assertFalse(TextRules.isDoubleSpace(" ", 100))
+    }
+
+    @Test fun lastGraphemeKeepsEmojiAndFlagsWhole() {
+        assertEquals(1, TextRules.lastGraphemeLength("salom"))
+        assertEquals(1, TextRules.lastGraphemeLength("oʻ"))
+        assertEquals(2, TextRules.lastGraphemeLength("ok 😀"))
+        assertEquals(4, TextRules.lastGraphemeLength("🇺🇿"))
+        assertEquals(0, TextRules.lastGraphemeLength(""))
     }
 }

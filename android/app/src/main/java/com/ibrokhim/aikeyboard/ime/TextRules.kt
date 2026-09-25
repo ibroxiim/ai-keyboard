@@ -1,5 +1,7 @@
 package com.ibrokhim.aikeyboard.ime
 
+import java.text.BreakIterator
+
 /** Typing conventions shared with the iOS keyboard (`KeyboardModel.autoCapitalize` / `space`). */
 object TextRules {
     const val DOUBLE_SPACE_WINDOW_MS = 350L
@@ -18,5 +20,14 @@ object TextRules {
         if (!before.endsWith(" ")) return false
         val previous = before.dropLast(1).lastOrNull() ?: return false
         return previous.isLetterOrDigit()
+    }
+
+    /** UTF-16 length of the last user-perceived character, so backspace removes a whole emoji or flag. */
+    fun lastGraphemeLength(before: String): Int {
+        if (before.isEmpty()) return 0
+        val iterator = BreakIterator.getCharacterInstance()
+        iterator.setText(before)
+        val end = iterator.last()
+        return end - iterator.previous()
     }
 }

@@ -3,9 +3,7 @@ package com.ibrokhim.aikeyboard.ime
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
 
-enum class EnterAction(val glyph: String) {
-    NEWLINE("⏎"), SEND("➤"), GO("→"), SEARCH("⌕"), NEXT("⇥"), DONE("✓"), PREVIOUS("⇤"),
-}
+enum class EnterAction { NEWLINE, SEND, GO, SEARCH, NEXT, DONE, PREVIOUS }
 
 /** Reads what the focused field asks for from its `EditorInfo` bits. */
 object EditorRules {
