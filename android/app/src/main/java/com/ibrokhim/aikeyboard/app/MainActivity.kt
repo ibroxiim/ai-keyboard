@@ -1,15 +1,17 @@
 package com.ibrokhim.aikeyboard.app
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.text.InputType
 import android.view.WindowInsets
+import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/** Milestone 1 stand-in: a field to type into. Setup steps and settings replace it in milestone 5. */
+/** Stand-in until milestone 5: a field to type into and the demo chat. Setup steps replace it later. */
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,6 +30,10 @@ class MainActivity : Activity() {
                 InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or
                 InputType.TYPE_TEXT_FLAG_MULTI_LINE
             minLines = 3
+        })
+        root.addView(Button(this).apply {
+            text = "Demo chatni ochish"
+            setOnClickListener { startActivity(Intent(this@MainActivity, DemoChatActivity::class.java)) }
         })
         if (Build.VERSION.SDK_INT >= 30) {
             // targetSdk 36 draws edge to edge; keep the field clear of the status bar and the keyboard.

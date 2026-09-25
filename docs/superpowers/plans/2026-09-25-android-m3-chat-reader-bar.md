@@ -1778,6 +1778,18 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" -- android
 
 M4 (emoji paneli, popup'lar, tebranish/ovoz, `ContextDetails`, avtomatik o'qish), M5 (sozlash ekrani va Accessibility tushuntirishi, foydalanuvchi API kaliti, README, APK).
 
+## Bajarish paytidagi o'zgarishlar
+
+- Task 3: `InputTarget`ga yangi metodlar qo'shilgach, servisning M1 implementatsiyasi kompilyatsiya bo'lmay qolardi —
+  Task 5 dagi `currentText`/`replaceAll` (va `MAX_FIELD`) servisga Task 3 da qo'shildi.
+- Task 2: vaqtinchalik `KeyboardAi.kt` (faqat `ChatSource`) qo'lda yozildi — yo'l qatoridagi izoh sabab
+  ko'chirish skripti uni tanimadi; mazmuni rejadagi bilan bir xil.
+- `DemoChatActivity` eksport qilinmagan, shuning uchun emulyatorda u `adb am start` bilan emas, bosh
+  ekrandagi "Demo chatni ochish" tugmasi orqali ochildi.
+- Emulyator tekshiruvi: 📖 → "Suhbat o'qilmoqda…" → ~3 s da tarjima + 3 javob (Emma, English) → javob
+  maydonga tushdi → "shanba kuni plov yeymiz" + ✨ → "we're getting plov on saturday" → maydon almashdi →
+  ✕ → maqsad chipi → tanlagich (Emma, tillar). Crash yo'q.
+
 ## Eslatma
 
 - Demo chat spec'da M5 (sozlash ekranidagi "Sinov") edi — 📖 ni emulyatorda sinash uchun M3 ga ko'chdi.

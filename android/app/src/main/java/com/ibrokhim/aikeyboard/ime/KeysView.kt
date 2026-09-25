@@ -7,13 +7,11 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
-import android.view.WindowInsets
 import com.ibrokhim.aikeyboard.BuildConfig
 import com.ibrokhim.aikeyboard.R
 import kotlin.math.abs
@@ -76,16 +74,20 @@ class KeysView(context: Context, private val controller: KeyboardController) : V
 
     init {
         setBackgroundColor(theme.background)
-        if (Build.VERSION.SDK_INT >= 30) {
-            setOnApplyWindowInsetsListener { _, insets ->
-                val bottom = insets.getInsets(WindowInsets.Type.navigationBars()).bottom
-                if (bottom != navigationInset) {
-                    navigationInset = bottom
-                    requestLayout()
-                }
-                insets
-            }
+    }
+
+    /** Android 15+ draws the keyboard behind the navigation bar; the service passes its height here. */
+    fun setNavigationInset(px: Int) {
+        if (px != navigationInset) {
+            navigationInset = px
+            requestLayout()
         }
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+        // The bar above grows and shrinks, which moves the keys on screen.
+        if (changed) logLayoutSoon()
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
