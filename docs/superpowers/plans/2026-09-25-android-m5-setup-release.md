@@ -382,7 +382,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" -- android
     <stop offset="0" stop-color="#3D7BFF"/><stop offset="1" stop-color="#8A4DFF"/>
   </linearGradient>
 </defs>
-<g transform="translate(512 512) scale(0.78) translate(-512 -560)">
+<g transform="translate(512 512) scale(0.64) translate(-512 -560)">
   <g fill="#FFFFFF" opacity="0.26">
     <rect x="140" y="200" width="530" height="330" rx="120"/>
     <path d="M 230 500 L 190 640 L 360 520 Z"/>
