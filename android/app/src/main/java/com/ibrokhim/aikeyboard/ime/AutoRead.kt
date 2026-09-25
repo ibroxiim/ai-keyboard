@@ -13,11 +13,18 @@ object AutoRead {
         "com.discord",
         "jp.naver.line.android",
         "com.kakao.talk",
-        "com.ibrokhim.aikeyboard", // the in-app demo chat
     )
 
-    fun eligible(packageName: String?, inputType: Int, enabled: Boolean): Boolean =
-        enabled && packageName in MESSENGERS && EditorRules.isChatField(inputType)
+    /**
+     * Set on the in-app demo chat's field (EditorInfo.privateImeOptions). Allowing the whole app package
+     * would also auto-read its settings screen and send that to Gemini.
+     */
+    const val DEMO_CHAT_OPTION = "com.ibrokhim.aikeyboard.demoChat"
+
+    fun eligible(packageName: String?, inputType: Int, enabled: Boolean, privateImeOptions: String? = null): Boolean {
+        if (!enabled || !EditorRules.isChatField(inputType)) return false
+        return packageName in MESSENGERS || privateImeOptions?.contains(DEMO_CHAT_OPTION) == true
+    }
 
     /** An unchanged chat whose analysis is still on screen is not sent to Gemini again. */
     fun isNew(hash: String, state: SharedState, now: Long): Boolean =

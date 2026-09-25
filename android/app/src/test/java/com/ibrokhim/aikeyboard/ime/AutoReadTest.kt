@@ -32,4 +32,9 @@ class AutoReadTest {
         assertTrue(AutoRead.isNew("other", fresh, now))
         assertTrue(AutoRead.isNew("h", fresh.copy(contextDate = now - 16 * 60_000), now))
     }
+
+    @Test fun ourOwnAppOnlyInTheMarkedDemoChat() {
+        assertFalse(AutoRead.eligible("com.ibrokhim.aikeyboard", text, enabled = true))
+        assertTrue(AutoRead.eligible("com.ibrokhim.aikeyboard", text, enabled = true, AutoRead.DEMO_CHAT_OPTION))
+    }
 }

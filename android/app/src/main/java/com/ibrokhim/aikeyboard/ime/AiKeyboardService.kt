@@ -11,11 +11,14 @@ import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -30,6 +33,8 @@ import com.ibrokhim.aikeyboard.ai.GeminiClient
 import com.ibrokhim.aikeyboard.ai.OkHttpGeminiTransport
 import com.ibrokhim.aikeyboard.ai.Translator
 import com.ibrokhim.aikeyboard.data.SharedStore
+import com.ibrokhim.aikeyboard.ime.ui.ContextDetails
+import com.ibrokhim.aikeyboard.ime.ui.EmojiPanel
 import com.ibrokhim.aikeyboard.ime.ui.SuggestionBar
 import com.ibrokhim.aikeyboard.ime.ui.barModel
 import com.ibrokhim.aikeyboard.reader.AccessibilityChatSource
@@ -38,6 +43,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
 class AiKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegistryOwner {
     // Compose in an input method needs the owners an Activity would normally provide.
@@ -46,16 +53,25 @@ class AiKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegist
     override val lifecycle: Lifecycle get() = lifecycleRegistry
     override val savedStateRegistry: SavedStateRegistry get() = savedStateController.savedStateRegistry
 
+    /** What sits where the keys are. */
+    private enum class LowerArea { KEYS, EMOJI, DETAILS }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val prefs by lazy { getSharedPreferences("keyboard", MODE_PRIVATE) }
     private lateinit var controller: KeyboardController
     private lateinit var store: SharedStore
     private lateinit var ai: KeyboardAi
+    private lateinit var recents: EmojiRecents
     private var keysView: KeysView? = null
+    private var panelView: ComposeView? = null
     private var editorInfo: EditorInfo? = null
     private var savedAlphabet = Alphabet.LATIN
-    /** Compose state, so the bar recolours when the system switches light/dark. */
+
+    // Compose state read by the bar and the panels.
     private val barTheme = mutableStateOf<KeyboardTheme?>(null)
+    private val lowerArea = mutableStateOf(LowerArea.KEYS)
+    private val navigationInset = mutableIntStateOf(0)
+    private val recentEmoji = mutableStateOf<List<String>>(emptyList())
 
     private val target = object : InputTarget {
         override fun textBeforeCursor(length: Int): String =
@@ -146,7 +162,13 @@ class AiKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegist
                 prefs.edit().putString("alphabet", savedAlphabet.name).apply()
             }
             keysView?.invalidate()
+            updateLowerArea()
         }
+        recents = EmojiRecents(
+            load = { prefs.getString("emojiRecents", "").orEmpty().split('\n').filter { it.isNotEmpty() } },
+            save = { prefs.edit().putString("emojiRecents", it.joinToString("\n")).apply() },
+        )
+        recentEmoji.value = recents.all
 
         store = SharedStore.get(this)
         val translator = Translator(GeminiClient(OkHttpGeminiTransport(), { BuildConfig.GEMINI_API_KEY }))
@@ -155,6 +177,17 @@ class AiKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegist
             openReaderSetup = ::openReaderSettings,
         )
         barTheme.value = KeyboardTheme.from(this)
+
+        scope.launch {
+            combine(store.state, ai.ui) { shared, _ -> shared.emojiKey }.collect { emojiKey ->
+                if (controller.emojiKey != emojiKey) {
+                    controller.emojiKey = emojiKey
+                    if (!emojiKey) controller.closeEmoji()
+                    keysView?.invalidate()
+                }
+                updateLowerArea()
+            }
+        }
     }
 
     override fun onCreateInputView(): View {
@@ -174,17 +207,72 @@ class AiKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegist
                 }
             }
         }
+        val panel = ComposeView(this).apply {
+            visibility = View.GONE
+            setContent {
+                val shared by store.state.collectAsState()
+                val current = barTheme.value ?: return@setContent
+                val inset = with(LocalDensity.current) { navigationInset.intValue.toDp() }
+                when (lowerArea.value) {
+                    LowerArea.KEYS -> Unit
+                    LowerArea.EMOJI -> EmojiPanel(
+                        recents = recentEmoji.value,
+                        theme = current,
+                        bottomInset = inset,
+                        onEmoji = { emoji ->
+                            controller.insertEmoji(emoji)
+                            recents.add(emoji)
+                        },
+                        onAbc = { controller.closeEmoji() },
+                        onBackspace = { controller.press(Key.Backspace) },
+                    )
+                    LowerArea.DETAILS -> shared.freshContext(System.currentTimeMillis())?.let { context ->
+                        ContextDetails(context, current, inset) { ai.closeDetails() }
+                    }
+                }
+            }
+        }.also { panelView = it }
+        // The keys stay laid out (INVISIBLE) under a panel, so the keyboard keeps its height.
+        val lower = LowerFrame(this).apply {
+            clipChildren = false
+            clipToPadding = false
+            addView(keys, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(panel, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        }
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            // Letter balloons on the top row rise over the bar.
+            clipChildren = false
+            clipToPadding = false
             addView(bar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            addView(keys, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(lower, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             if (Build.VERSION.SDK_INT >= 30) {
                 setOnApplyWindowInsetsListener { _, insets ->
-                    keys.setNavigationInset(insets.getInsets(WindowInsets.Type.navigationBars()).bottom)
+                    // The system draws its own ⌄ and keyboard-switch buttons in a 48 dp strip at the bottom of
+                    // the keyboard window: that is the tappable-element inset, twice the navigation bar hint.
+                    val bottom = maxOf(
+                        insets.getInsets(WindowInsets.Type.navigationBars()).bottom,
+                        insets.getInsets(WindowInsets.Type.tappableElement()).bottom,
+                    )
+                    keys.setNavigationInset(bottom)
+                    navigationInset.intValue = bottom
                     insets
                 }
             }
         }
+    }
+
+    private fun updateLowerArea() {
+        val details = ai.ui.value.detailsOpen && store.value.freshContext(System.currentTimeMillis()) != null
+        val area = when {
+            details -> LowerArea.DETAILS
+            controller.showsEmoji -> LowerArea.EMOJI
+            else -> LowerArea.KEYS
+        }
+        if (area == LowerArea.EMOJI && lowerArea.value != LowerArea.EMOJI) recentEmoji.value = recents.all
+        lowerArea.value = area
+        keysView?.visibility = if (area == LowerArea.KEYS) View.VISIBLE else View.INVISIBLE
+        panelView?.visibility = if (area == LowerArea.KEYS) View.GONE else View.VISIBLE
     }
 
     /** The keyboard never takes over the whole screen in landscape. */
@@ -193,16 +281,18 @@ class AiKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegist
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         editorInfo = info
-        controller.showsGlobe = if (Build.VERSION.SDK_INT >= 28) shouldOfferSwitchingToNextInputMethod() else true
         val current = KeyboardTheme.from(this)
         barTheme.value = current
         keysView?.apply {
             this.theme = current
             enterAction = EditorRules.enterAction(info.imeOptions)
         }
+        controller.closeEmoji()
+        ai.closeDetails()
         controller.setLayer(Layer.LETTERS)
         controller.autoCapitalize()
         keysView?.invalidate()
+        if (!restarting) ai.autoRead(info.packageName, info.inputType, info.privateImeOptions)
     }
 
     override fun onWindowShown() {

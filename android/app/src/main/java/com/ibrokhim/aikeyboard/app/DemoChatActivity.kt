@@ -17,6 +17,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import com.ibrokhim.aikeyboard.ime.AutoRead
 
 /** A DM look-alike for trying 📖 without a messenger installed. People and chats are fictional. */
 class DemoChatActivity : Activity() {
@@ -69,6 +70,8 @@ class DemoChatActivity : Activity() {
                 InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or
                 InputType.TYPE_TEXT_FLAG_MULTI_LINE
             maxLines = 4
+            // Lets auto-read treat this field like a messenger's.
+            privateImeOptions = AutoRead.DEMO_CHAT_OPTION
         }
         val send = Button(this).apply { text = "➤" }
         send.setOnClickListener {

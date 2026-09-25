@@ -92,9 +92,9 @@ class KeyboardAi(
      * Keyboard opened in a messenger with auto-read on: read the chat's text (no screenshot) and analyse it,
      * unless it is the same chat whose analysis is still on screen.
      */
-    fun autoRead(packageName: String?, inputType: Int) {
+    fun autoRead(packageName: String?, inputType: Int, privateImeOptions: String? = null) {
         val shared = store.value
-        if (!AutoRead.eligible(packageName, inputType, shared.autoRead)) return
+        if (!AutoRead.eligible(packageName, inputType, shared.autoRead, privateImeOptions)) return
         if (packageName == null || !chatSource.available || shared.isAnalyzing(clock())) return
         readJob?.cancel()
         readJob = scope.launch {

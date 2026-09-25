@@ -1577,6 +1577,21 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" -- android
 
 ---
 
+## Bajarish paytidagi o'zgarishlar (emulyator tekshiruvidan)
+
+- **`LowerFrame`**: oddiy `FrameLayout` WRAP_CONTENT bo'lgani uchun MATCH_PARENT panel (tafsilotlar)
+  klaviaturani butun ekranga cho'zib yubordi. `LowerFrame` balandlikni faqat tugmalardan oladi va panellarga
+  aynan shu balandlikni beradi.
+- **Pastki inset = max(navigationBars, tappableElement)**: klaviatura oynasi ichida tizim o'zining ⌄ (yashirish)
+  va almashtirish tugmalarini 48 dp (144 px) chiziqda chizadi, `navigationBars` esa atigi 72 px. Emoji
+  panelidagi ABC ⌄ ning bosish sohasiga tushib, klaviaturani yopardi (`HIDE_SOFT_INPUT_BY_BACK_KEY`).
+- **Demo chat belgisi**: ilova paketi avtomatik o'qish ro'yxatidan olindi — aks holda `MainActivity`dagi
+  sinov maydonida sozlamalar ekrani matni Gemini'ga ketardi. Demo chat maydoni
+  `privateImeOptions = AutoRead.DEMO_CHAT_OPTION` bilan belgilanadi (`AutoReadTest` +1).
+- Emulyator: avtomatik o'qish (~3–4 s), o'zgarmagan chatda qayta so'rov yo'q (jarayon qayta ishga tushganda
+  ham), ✕ dan keyin qayta o'qiydi; sozlamalar ekranida o'qimaydi; tafsilotlar ↔ "Klaviatura"; emoji →
+  maydon, "KO'P ISHLATILGAN"; q/g pufakchalari; globus yo'q. Testlar: 102.
+
 ## Keyingi reja
 
 M5: to'liq sozlash ekrani (qadamlar ✓, Accessibility tushuntirishi, til, klaviatura, do'stlar, oxirgi kontekst), foydalanuvchi o'z Gemini kalitini kiritishi, ilova ikonkasi, README'ga Android bo'limi, imzolangan APK (GitHub Releases).
