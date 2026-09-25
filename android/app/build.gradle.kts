@@ -8,7 +8,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-// The Gemini key lives in the gitignored local.properties (gemini.apiKey=...), never in the repo.
+// The developer's Gemini key lives in the gitignored local.properties (gemini.apiKey=...) and only
+// reaches debug builds. Release APKs carry no key: users enter their own in the app.
 val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) file.inputStream().use { load(it) }
@@ -23,8 +24,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
-        buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties.getProperty("gemini.apiKey", "")}\"")
+        versionName = "0.1.0-beta"
     }
 
     buildFeatures {
@@ -33,7 +33,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties.getProperty("gemini.apiKey", "")}\"")
+        }
         release {
+            buildConfigField("String", "GEMINI_API_KEY", "\"\"")
             isMinifyEnabled = false
         }
     }
@@ -60,6 +64,7 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.activity:activity-compose:1.12.4")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.3.20")

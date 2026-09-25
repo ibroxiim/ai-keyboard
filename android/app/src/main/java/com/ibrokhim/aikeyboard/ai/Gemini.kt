@@ -19,7 +19,7 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
 sealed class GeminiException(message: String, cause: Throwable? = null) : Exception(message, cause) {
-    class MissingKey : GeminiException("Gemini API kaliti yo'q")
+    class MissingKey : GeminiException("Gemini API kaliti kiritilmagan — AI Keyboard ilovasini oching")
     class Http(val code: Int, detail: String) : GeminiException("Gemini $code: $detail")
     class Empty : GeminiException("Gemini bo'sh javob qaytardi")
     class Timeout : GeminiException("Gemini javob bermadi")

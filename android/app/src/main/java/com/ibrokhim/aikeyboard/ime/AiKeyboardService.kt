@@ -27,11 +27,11 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import com.ibrokhim.aikeyboard.BuildConfig
 import com.ibrokhim.aikeyboard.ai.ChatAnalysisService
 import com.ibrokhim.aikeyboard.ai.GeminiClient
 import com.ibrokhim.aikeyboard.ai.OkHttpGeminiTransport
 import com.ibrokhim.aikeyboard.ai.Translator
+import com.ibrokhim.aikeyboard.data.ApiKeyStore
 import com.ibrokhim.aikeyboard.data.SharedStore
 import com.ibrokhim.aikeyboard.ime.ui.ContextDetails
 import com.ibrokhim.aikeyboard.ime.ui.EmojiPanel
@@ -171,7 +171,8 @@ class AiKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegist
         recentEmoji.value = recents.all
 
         store = SharedStore.get(this)
-        val translator = Translator(GeminiClient(OkHttpGeminiTransport(), { BuildConfig.GEMINI_API_KEY }))
+        val apiKeys = ApiKeyStore.get(this)
+        val translator = Translator(GeminiClient(OkHttpGeminiTransport(), { apiKeys.effectiveKey() }))
         ai = KeyboardAi(
             store, translator, ChatAnalysisService(store, translator), target, AccessibilityChatSource(), scope,
             openReaderSetup = ::openReaderSettings,
