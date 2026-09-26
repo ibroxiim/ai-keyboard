@@ -17,7 +17,7 @@ You will get a reply within 7 days. Once a fix is in `main`, you are welcome to 
 
 Things that are especially relevant for this project:
 
-- a committed API key or other secret (keys belong in the gitignored `Shared/Secrets.swift`),
+- a committed API key or other secret (keys belong in the gitignored `ios/Shared/Secrets.swift`),
 - ways the keyboard could leak typed text, or the app could leak DM screenshots or chat context,
 - anything that lets a third party read the shared App Group data.
 

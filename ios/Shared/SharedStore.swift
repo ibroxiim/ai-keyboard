@@ -4,6 +4,8 @@ enum AppGroup {
     static let id = "group.com.ibrokhim.dmtranslator"
     /// Darwin notification: the app (Back Tap intent) changed the state, the keyboard should reload.
     static let stateChanged = "com.ibrokhim.dmtranslator.stateChanged"
+    /// Debug builds only: `tools/simulate-back-tap.sh` stands in for Back Tap in the Simulator.
+    static let simulatedBackTap = "com.ibrokhim.dmtranslator.debug.simulatedBackTap"
 }
 
 /// Everything the app and the keyboard share. Lives in one JSON file in the App Group container.

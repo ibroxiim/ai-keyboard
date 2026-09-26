@@ -23,6 +23,7 @@ Kerak: Xcode (iOS 18+ SDK), [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`
 Gemini API kaliti ([AI Studio](https://aistudio.google.com/apikey), bepul).
 
 ```bash
+cd ios
 cp Shared/Secrets.swift.example Shared/Secrets.swift   # o'z kalitingizni qo'ying
 xcodegen generate
 open AIKeyboard.xcodeproj
@@ -31,12 +32,12 @@ open AIKeyboard.xcodeproj
 O'z iPhone'ingizda ishga tushirish uchun Apple akkauntingizga mos ID'lar kerak. Quyidagilarni **faqat lokal**
 o'zgartiring va PR'ga qo'shmang:
 
-- `project.yml` — `DEVELOPMENT_TEAM`, ikkala `PRODUCT_BUNDLE_IDENTIFIER`, ikkala `com.apple.security.application-groups`
-- `Shared/SharedStore.swift` — `AppGroup.id`
-- `Shared/EnabledKeyboards.swift` — `aiKeyboardID` (klaviatura bundle ID'si)
-- `tools/make_shortcut.py` — `BUNDLE_ID`, `TEAM_ID` (keyin shortcut faylini qayta yarating, README'ga qarang)
+- `ios/project.yml` — `DEVELOPMENT_TEAM`, ikkala `PRODUCT_BUNDLE_IDENTIFIER`, ikkala `com.apple.security.application-groups`
+- `ios/Shared/SharedStore.swift` — `AppGroup.id`
+- `ios/Shared/EnabledKeyboards.swift` — `aiKeyboardID` (klaviatura bundle ID'si)
+- `ios/tools/make_shortcut.py` — `BUNDLE_ID`, `TEAM_ID` (keyin shortcut faylini qayta yarating, README'ga qarang)
 
-`Shared/Secrets.swift` gitignore'da — API kalitlar hech qachon commit qilinmaydi.
+`ios/Shared/Secrets.swift` gitignore'da — API kalitlar hech qachon commit qilinmaydi.
 
 ## Sinash
 
@@ -45,8 +46,9 @@ Klaviatura kengaytmasini sinashning o'z cheklovlari bor:
 - **Iloji bo'lsa haqiqiy iPhone'da sinang.** Lag, haptic va harf pufakchasini faqat qurilmada baholash mumkin.
 - **Simulatorda** matnni ekrandagi klaviatura tugmalari bilan yozing. Mac klaviaturasidan (`hardware keyboard`)
   kiritilgan matnni kengaytma ko'rmaydi — ✨ noto'g'ri ishlayotgandek tuyuladi, lekin bu simulator xususiyati.
-- Simulatorda **Back Tap** ham, **Shortcuts** ilovasi ham yo'q. Skrinshot tahlilini ilovadagi
-  «DM skrinshotini tanlash» orqali sinang.
+- Simulatorda **Back Tap** ham, **Shortcuts** ilovasi ham yo'q. Debug build'da `ios/tools/simulate-back-tap.sh`
+  uning o'rnini bosadi: klaviatura ekranda turganda ishga tushiring — simulator ekrani xuddi Back Tap'dagidek
+  tahlil qilinadi. Yoki ilovadagi «DM skrinshotini tanlash» orqali sinang.
 - Issue va PR'larga **haqiqiy DM skrinshotlarini qo'ymang** — boshqa odamlarning xabarlari. Ismlar va matnni yashiring
   yoki soxta suhbat ishlating.
 
@@ -54,7 +56,7 @@ Klaviatura kengaytmasini sinashning o'z cheklovlari bor:
 
 - Atrofdagi kod uslubiga moslang: nomlash, izohlar zichligi, Swift 5 language mode.
 - Izohlar *nima uchun*ni tushuntirsin, *nima*ni emas.
-- **Yozish yo'li UIKit'da qoladi.** Tugmalar (`Keyboard/KeysUIView.swift`) va emoji paneli ataylab UIKit —
+- **Yozish yo'li UIKit'da qoladi.** Tugmalar (`ios/Keyboard/KeysUIView.swift`) va emoji paneli ataylab UIKit —
   SwiftUI gesture'lari sezilarli lag berdi. `KeyboardModel` `@Observable`: xususiyatlarni faqat qiymat o'zgarganda
   yozing, aks holda har harfda klaviatura qayta chiziladi.
 - Klaviatura kengaytmasining xotira limiti kichik — og'ir kutubxonalar va katta rasmlardan qoching.
