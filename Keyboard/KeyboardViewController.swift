@@ -33,7 +33,25 @@ final class KeyboardViewController: UIInputViewController {
             self?.model.reloadState()
         }
         trackBarHeight()
+        #if DEBUG
+        simulatedBackTapObserver = DarwinObserver(name: AppGroup.simulatedBackTap) {
+            Self.runSimulatedBackTap()
+        }
+        #endif
     }
+
+    #if DEBUG
+    private var simulatedBackTapObserver: DarwinObserver?
+
+    /// The Simulator has no Back Tap and no Shortcuts app. `tools/simulate-back-tap.sh` drops a screenshot
+    /// into the App Group and posts `AppGroup.simulatedBackTap`; this runs the same analysis the intent would.
+    private static func runSimulatedBackTap() {
+        guard let url = SharedStore.containerURL?.appendingPathComponent("simulated-back-tap.jpg"),
+              let data = try? Data(contentsOf: url)
+        else { return }
+        Task { try? await ChatAnalysisService.run(imageData: data, fromShortcut: false) }
+    }
+    #endif
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
