@@ -131,7 +131,7 @@ Run:
 ```bash
 python3 - <<'PY'
 import re, pathlib
-key = re.search(r'"([^"]{20,})"', pathlib.Path("../Shared/Secrets.swift").read_text()).group(1)
+key = re.search(r'"([^"]{20,})"', pathlib.Path("../ios/Shared/Secrets.swift").read_text()).group(1)
 p = pathlib.Path("local.properties")
 lines = [l for l in p.read_text().splitlines() if not l.startswith("gemini.apiKey=")]
 p.write_text("\n".join(lines + ["gemini.apiKey=" + key]) + "\n")

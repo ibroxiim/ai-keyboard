@@ -118,7 +118,7 @@ Run from android/:  python3 tools/port_emoji.py   — rerun whenever the Swift l
 import pathlib, re
 
 root = pathlib.Path(__file__).resolve().parents[2]
-swift = (root / "Keyboard/EmojiData.swift").read_text()
+swift = (root / "ios/Keyboard/EmojiData.swift").read_text()
 out = root / "android/app/src/main/java/com/ibrokhim/aikeyboard/ime/EmojiData.kt"
 
 # SF Symbol names on iOS → a representative emoji for the Android category tab.

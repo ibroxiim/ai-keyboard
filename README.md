@@ -27,6 +27,7 @@ Monorepo: har platforma o'z papkasida, hujjatlar va litsenziyalar ildizda.
 | `ios/App/` | Sozlash ekrani, Shortcuts amali (App Intent), skrinshotni siqish |
 | `ios/Keyboard/` | Klaviatura: UIKit tugmalar (lotin oʻ/gʻ, kirill), takliflar qatori, ✨, emoji paneli |
 | `ios/tools/` | Shortcut faylini yaratish skripti, ikonka manbasi (SVG), Simulator uchun Back Tap skripti |
+| `android/` | Android klaviatura (Kotlin, Gradle) — [Android (beta)](#android-beta) |
 
 Model: `gemini-3.5-flash-lite`, band bo'lsa `gemini-3.5-flash`. Skrinshot ikki parallel so'rovda o'qiladi:
 tarjima ~2s, tayyor javoblar ~3s. ✨ ~1.5s.
