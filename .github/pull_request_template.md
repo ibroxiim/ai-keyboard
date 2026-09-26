@@ -17,6 +17,6 @@
 
 ## Tekshiruv
 
-- [ ] `xcodegen generate` va Xcode build xatosiz o'tadi
+- [ ] `ios/` da `xcodegen generate` va Xcode build xatosiz o'tadi
 - [ ] API kalit, token yoki boshqa odamlarning shaxsiy ma'lumoti yo'q
 - [ ] O'z `DEVELOPMENT_TEAM` / bundle ID / App Group o'zgarishlarim PR'ga kirmagan

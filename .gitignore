@@ -1,7 +1,1 @@
-# API kalit — hech qachon commit qilinmaydi
-Shared/Secrets.swift
-# xcodegen generate bilan qayta yaratiladi
-*.xcodeproj
-build/
-DerivedData/
 .DS_Store

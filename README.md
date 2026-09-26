@@ -5,25 +5,27 @@ ilova ekrandagi suhbatni o'qiydi, klaviatura tepasida kelgan xabar tarjimasi va 
 Yoqmasa — o'zbekcha yozib ✨ ni bosasiz, AI suhbat kontekstiga mos tarjima qilib beradi.
 
 ```
-Back Tap ─► Shortcut: [Take Screenshot] → [Suhbatni tahlil qil]   (App/AnalyzeChatIntent.swift)
+Back Tap ─► Shortcut: [Take Screenshot] → [Suhbatni tahlil qil]   (ios/App/AnalyzeChatIntent.swift)
                                               │ fonda, ilova ochilmaydi
                                               ▼
                      skrinshot (720px JPEG) → Gemini → { tarjima, 3 javob, kontekst }
                                               │
                          App Group: state.json + Darwin notification
                                               │
-Klaviatura ◄──────────────────────────────────┘   (Keyboard/)
+Klaviatura ◄──────────────────────────────────┘   (ios/Keyboard/)
    ✨: maydondagi matn + kontekst → Gemini → 3 variant → tanlangani maydonni almashtiradi
 ```
 
 ## Tuzilishi
 
+Monorepo: har platforma o'z papkasida, hujjatlar va litsenziyalar ildizda.
+
 | Papka | Nima |
 |---|---|
-| `Shared/` | Gemini klienti, promptlar, App Group holati — ilova va klaviatura ikkalasida |
-| `App/` | Sozlash ekrani, Shortcuts amali (App Intent), skrinshotni siqish |
-| `Keyboard/` | Klaviatura: UIKit tugmalar (lotin oʻ/gʻ, kirill), takliflar qatori, ✨, emoji paneli |
-| `tools/` | Shortcut faylini yaratish skripti, ikonka manbasi (SVG) |
+| `ios/Shared/` | Gemini klienti, promptlar, App Group holati — ilova va klaviatura ikkalasida |
+| `ios/App/` | Sozlash ekrani, Shortcuts amali (App Intent), skrinshotni siqish |
+| `ios/Keyboard/` | Klaviatura: UIKit tugmalar (lotin oʻ/gʻ, kirill), takliflar qatori, ✨, emoji paneli |
+| `ios/tools/` | Shortcut faylini yaratish skripti, ikonka manbasi (SVG), Simulator uchun Back Tap skripti |
 
 Model: `gemini-3.5-flash-lite`, band bo'lsa `gemini-3.5-flash`. Skrinshot ikki parallel so'rovda o'qiladi:
 tarjima ~2s, tayyor javoblar ~3s. ✨ ~1.5s.
@@ -31,13 +33,14 @@ tarjima ~2s, tayyor javoblar ~3s. ✨ ~1.5s.
 ## Ishga tushirish
 
 ```bash
+cd ios
 cp Shared/Secrets.swift.example Shared/Secrets.swift   # kalitni qo'ying
 xcodegen generate
 open AIKeyboard.xcodeproj
 ```
 
-Boshqa Apple akkaunt bilan: `project.yml` dagi `DEVELOPMENT_TEAM` va bundle ID'larni (App Group bilan birga)
-o'zingiznikiga almashtiring, keyin `tools/make_shortcut.py` ni qayta ishga tushiring.
+Boshqa Apple akkaunt bilan: `ios/project.yml` dagi `DEVELOPMENT_TEAM` va bundle ID'larni (App Group bilan birga)
+o'zingiznikiga almashtiring, keyin `ios/tools/make_shortcut.py` ni qayta ishga tushiring.
 
 Xcode'da iPhone'ni tanlab Run. Bepul Apple ID bilan:
 - telefonda Settings → General → VPN & Device Management → developer'ga ishonish;
@@ -48,7 +51,7 @@ Xcode'da iPhone'ni tanlab Run. Bepul Apple ID bilan:
 
 1. Settings → General → Keyboard → Keyboards → Add New Keyboard → **AI Keyboard**
 2. AI Keyboard → **Allow Full Access** (AI internet orqali ishlaydi; harf yozish usiz ham ishlaydi)
-3. Ilovada **Shortcut'ni qo'shish** → Shortcuts → **Add Shortcut** (tayyor fayl: `App/Resources/AI Keyboard.shortcut`)
+3. Ilovada **Shortcut'ni qo'shish** → Shortcuts → **Add Shortcut** (tayyor fayl: `ios/App/Resources/AI Keyboard.shortcut`)
 4. Settings → Accessibility → Touch → **Back Tap** → Double Tap → **AI Keyboard** shortcut'i
 
 Ilova sozlash qadamlarini o'zi belgilaydi: 1 — `AppleKeyboards`, 2 — klaviatura Full Access bilan ochilganda,
@@ -59,9 +62,10 @@ do'stlar (skrinshotlardan eslab qolingan: ism, til, ohang) va tillar tugmalarini
 
 ## Shortcut faylini qayta yaratish
 
-Bundle ID, team yoki intent nomi o'zgarsa (`tools/make_shortcut.py` ichida):
+Bundle ID, team yoki intent nomi o'zgarsa (`ios/tools/make_shortcut.py` ichida):
 
 ```bash
+cd ios
 python3 tools/make_shortcut.py
 shortcuts sign --mode anyone --input build/AIKeyboard-unsigned.shortcut --output "App/Resources/AI Keyboard.shortcut"
 ```
