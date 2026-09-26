@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- No globe key: Android shows its own keyboard switcher in the navigation bar. -->
+<input-method xmlns:android="http://schemas.android.com/apk/res/android"
+    android:supportsSwitchingToNextInputMethod="false">
+    <subtype
+        android:label="@string/subtype_uz"
+        android:imeSubtypeLocale="uz_UZ"
+        android:languageTag="uz-Latn-UZ"
+        android:imeSubtypeMode="keyboard" />
+</input-method>
