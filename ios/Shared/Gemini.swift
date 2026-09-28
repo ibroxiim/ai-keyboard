@@ -1,19 +1,5 @@
 import Foundation
 
-enum GeminiError: LocalizedError {
-    case missingKey
-    case http(Int, String)
-    case empty
-
-    var errorDescription: String? {
-        switch self {
-        case .missingKey: "Gemini API kaliti yo'q (Shared/Secrets.swift)"
-        case .http(let code, let message): "Gemini \(code): \(message)"
-        case .empty: "Gemini bo'sh javob qaytardi"
-        }
-    }
-}
-
 enum Gemini {
     enum Part {
         case text(String)
@@ -27,9 +13,12 @@ enum Gemini {
         }
     }
 
-    /// Lite answers a rewrite in ~1.5s with the same quality; the bigger model is only a fallback
-    /// for when lite is overloaded (429/503 happen on the free tier).
-    static let models = ["gemini-3.5-flash-lite", "gemini-3.5-flash"]
+    /// Tried in order. On 2026-09-28 3.5-flash-lite took 14–27 s per call (a screenshot often past the timeout)
+    /// and 3.5-flash answered only 503, while 3.6-flash read a screenshot in 3–4 s — so it leads now.
+    static let models = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"]
+
+    /// Per attempt. Three attempts fit the keyboard's 60 s analysis window.
+    static let attemptTimeout: TimeInterval = 20
 
     static func generate<T: Decodable>(
         _ type: T.Type, system: String, parts: [Part], schema: [String: Any]
@@ -51,8 +40,8 @@ enum Gemini {
             do {
                 let text = try await call(model: model, payload: payload)
                 return try JSONDecoder().decode(T.self, from: Data(text.utf8))
-            } catch GeminiError.http(let code, let message) where [429, 500, 503].contains(code) {
-                lastError = GeminiError.http(code, message)
+            } catch where GeminiError.triesNextModel(after: error) {
+                lastError = error
             }
         }
         throw lastError
@@ -60,7 +49,7 @@ enum Gemini {
 
     private static func call(model: String, payload: Data) async throws -> String {
         let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent")!
-        var request = URLRequest(url: url, timeoutInterval: 30)
+        var request = URLRequest(url: url, timeoutInterval: attemptTimeout)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(Secrets.geminiAPIKey, forHTTPHeaderField: "x-goog-api-key")
