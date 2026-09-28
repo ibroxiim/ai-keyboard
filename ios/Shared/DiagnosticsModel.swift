@@ -99,7 +99,22 @@ struct DiagnosticSession: Codable, Equatable, Identifiable {
 enum DiagnosticsStore {
     static let limit = 50
 
-    static var fileURL: URL? { SharedStore.containerURL?.appendingPathComponent("diagnostics.json") }
+    /// Under Library/ because `devicectl device copy from` only reaches Library, Documents and tmp — this way the
+    /// file comes straight off a connected phone.
+    static var fileURL: URL? { SharedStore.containerURL?.appendingPathComponent("Library/diagnostics.json") }
+
+    /// Where the first builds wrote it, next to state.json.
+    private static var legacyURL: URL? { SharedStore.containerURL?.appendingPathComponent("diagnostics.json") }
+
+    /// Moves the file an older build left at the container root; never overwrites a newer one.
+    static func migrateLegacyFile(from legacy: URL? = legacyURL, to url: URL? = fileURL) {
+        guard let legacy, let url, FileManager.default.fileExists(atPath: legacy.path) else { return }
+        if FileManager.default.fileExists(atPath: url.path) {
+            try? FileManager.default.removeItem(at: legacy)
+        } else {
+            try? FileManager.default.moveItem(at: legacy, to: url)
+        }
+    }
 
     private struct File: Codable {
         var sessions: [DiagnosticSession]

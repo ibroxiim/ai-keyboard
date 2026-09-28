@@ -55,4 +55,18 @@ final class DiagnosticsModelTests: XCTestCase {
         DiagnosticsStore.clear(at: url)
         XCTAssertEqual(DiagnosticsStore.load(from: url), [])
     }
+
+    func testLegacyFileMovesToTheNewPlaceOnce() {
+        let legacy = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
+        defer { try? FileManager.default.removeItem(at: legacy) }
+        DiagnosticsStore.append(session(duration: 3), to: legacy)
+        DiagnosticsStore.migrateLegacyFile(from: legacy, to: url)
+        XCTAssertEqual(DiagnosticsStore.load(from: url), [session(duration: 3)])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: legacy.path))
+
+        // A newer file is never overwritten by an old one.
+        DiagnosticsStore.append(session(duration: 4), to: legacy)
+        DiagnosticsStore.migrateLegacyFile(from: legacy, to: url)
+        XCTAssertEqual(DiagnosticsStore.load(from: url), [session(duration: 3)])
+    }
 }
