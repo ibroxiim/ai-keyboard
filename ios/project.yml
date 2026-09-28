@@ -78,6 +78,8 @@ targets:
       - Shared/Models.swift
       - Shared/TouchOutcome.swift
       - Keyboard/TouchTracker.swift
+      - Shared/DiagnosticsModel.swift
+      - Shared/PhraseDiff.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ibrokhim.dmtranslator.tests
