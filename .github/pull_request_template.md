@@ -18,5 +18,6 @@
 ## Tekshiruv
 
 - [ ] `ios/` da `xcodegen generate` va Xcode build xatosiz o'tadi
+- [ ] `ios/` da unit testlar o'tadi (`xcodebuild test ... -only-testing:AIKeyboardTests`)
 - [ ] API kalit, token yoki boshqa odamlarning shaxsiy ma'lumoti yo'q
 - [ ] O'z `DEVELOPMENT_TEAM` / bundle ID / App Group o'zgarishlarim PR'ga kirmagan

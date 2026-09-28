@@ -62,6 +62,11 @@ Klaviatura kengaytmasini sinashning o'z cheklovlari bor:
 - Simulatorda **Back Tap** ham, **Shortcuts** ilovasi ham yo'q. Debug build'da `ios/tools/simulate-back-tap.sh`
   uning o'rnini bosadi: klaviatura ekranda turganda ishga tushiring — simulator ekrani xuddi Back Tap'dagidek
   tahlil qilinadi. Yoki ilovadagi «DM skrinshotini tanlash» orqali sinang.
+- **Unit testlar** (teginish mantig'i, muddatlar, diagnostika):
+  `cd ios && xcodegen generate && xcodebuild test -project AIKeyboard.xcodeproj -scheme Tarjimon -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:AIKeyboardTests`
+- **Diagnostika**: ilovada Diagnostika → yoqing. Klaviatura har ochilishida qisqa hisobot yozadi (teginishlar,
+  yo'qolganlari, kechikish, CPU, harorat — yozilgan matn saqlanmaydi). «Yozish testi» harf yo'qolishini tekshiradi.
+  Instruments'ning Points of Interest trekida tugma, ✨ va Back Tap bosqichlari ko'rinadi.
 - Issue va PR'larga **haqiqiy DM skrinshotlarini qo'ymang** — boshqa odamlarning xabarlari. Ismlar va matnni yashiring
   yoki soxta suhbat ishlating.
 
