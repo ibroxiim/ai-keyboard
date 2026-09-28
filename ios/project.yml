@@ -80,6 +80,7 @@ targets:
       - Keyboard/TouchTracker.swift
       - Shared/DiagnosticsModel.swift
       - Shared/PhraseDiff.swift
+      - Keyboard/Diagnostics/TouchJournal.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ibrokhim.dmtranslator.tests
