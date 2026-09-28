@@ -138,7 +138,8 @@ har teginish uchun `{t, key: [qator, ustun], kind, outcome, deliveryMs, upToInse
 - **Test rejimida** (ilovaning o'z test maydoni) batafsil `detail` saqlanadi. Klaviatura test maydonini
   `textDocumentProxy.textContentType` dagi maxsus qiymatdan (`com.ibrokhim.dmtranslator.diagnostics`) taniydi.
   M1'da bu qiymat klaviaturaga yetib kelishi tekshiriladi; kelmasa — maydon xususiyatlarining noyob
-  kombinatsiyasi (`keyboardType` + `returnKeyType` + `autocorrectionType`) belgi bo'ladi.
+  kombinatsiyasi (`returnKeyType` + `autocorrectionType`; `keyboardType` emas — ASCII maydonlarga iOS bu
+  klaviaturani qo'ymaydi) belgi bo'ladi.
 
 ### Ilovadagi "Diagnostika" bo'limi
 

@@ -22,8 +22,13 @@ final class PhraseDiffTests: XCTestCase {
         XCTAssertTrue(PhraseDiff.compare(expected: "do'st", typed: "do’st ").isPerfect)
     }
 
-    func testEmptyTypedTextMissesEverything() {
-        XCTAssertEqual(PhraseDiff.compare(expected: "abc", typed: ""), PhraseDiff(missing: 3))
+    func testStoppingEarlyIsNotCountedAsMissing() {
+        XCTAssertEqual(PhraseDiff.compare(expected: "salom dunyo", typed: "salom"), PhraseDiff(unfinished: 6))
+        XCTAssertTrue(PhraseDiff.compare(expected: "salom dunyo", typed: "salom").isPerfect)
+    }
+
+    func testEmptyTypedTextIsAllUnfinished() {
+        XCTAssertEqual(PhraseDiff.compare(expected: "abc", typed: ""), PhraseDiff(unfinished: 3))
     }
 
     func testTestPhraseIsAboutTwoHundredCharacters() {

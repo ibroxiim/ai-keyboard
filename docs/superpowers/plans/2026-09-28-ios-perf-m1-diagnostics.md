@@ -1659,8 +1659,9 @@ final class KeyboardViewController: UIInputViewController {
         let contentType: UITextContentType? = textDocumentProxy.textContentType ?? nil
         if contentType?.rawValue == DiagnosticsMarker.contentType { return true }
         // In case iOS does not hand a custom content type to the keyboard: a trait pair no chat field uses.
-        return textDocumentProxy.keyboardType == UIKeyboardType.asciiCapable
-            && textDocumentProxy.returnKeyType == UIReturnKeyType.continue
+        // Not `.asciiCapable` — iOS keeps keyboards that are not ASCII-capable, like this one, out of such fields.
+        return textDocumentProxy.returnKeyType == UIReturnKeyType.continue
+            && textDocumentProxy.autocorrectionType == UITextAutocorrectionType.no
     }
 
     /// The keyboard grows by the chip row only while the row has something in it. SwiftUI cannot
@@ -2194,7 +2195,6 @@ struct DiagnosticsView: View {
                 .lineLimit(3...8)
                 .focused($fieldFocused)
                 .textContentType(UITextContentType(rawValue: DiagnosticsMarker.contentType))
-                .keyboardType(.asciiCapable)
                 .submitLabel(.continue)
                 .autocorrectionDisabled()
             HStack {
@@ -2421,3 +2421,14 @@ EOF
 ```
 
 M1 tugadi. Keyingi qadam — foydalanuvchidan push/PR tasdig'ini olish va M2 o'lchov sessiyasi (spec, "M2 — O'lchov sessiyasi").
+
+---
+
+## Bajarilish paytidagi o'zgarishlar (2026-09-28)
+
+- **Test maydoni belgisi:** `.keyboardType(.asciiCapable)` olib tashlandi — `IsASCIICapable: false` bo'lgan klaviaturani
+  iOS bunday maydonlarga qo'ymaydi (Simulator'da Apple klaviaturasi ochildi). Zaxira belgi: `returnKeyType == .continue`
+  va `autocorrectionType == .no`. Simulator'da test sessiyasi `testMode: true` bilan yozildi.
+- **`PhraseDiff.unfinished`:** iborani oxirigacha yozmaslik "tushib qolgan" deb hisoblanmaydi — yozilgan matn iboraning
+  eng mos boshlanishi bilan tekislanadi, qolgani `unfinished`. Test: `testStoppingEarlyIsNotCountedAsMissing`,
+  `testEmptyTypedTextIsAllUnfinished` (jami 37 test). Ekrandagi ogohlantirish matni ham aniqlashtirildi.

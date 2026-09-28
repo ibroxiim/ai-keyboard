@@ -113,8 +113,9 @@ final class KeyboardViewController: UIInputViewController {
         let contentType: UITextContentType? = textDocumentProxy.textContentType ?? nil
         if contentType?.rawValue == DiagnosticsMarker.contentType { return true }
         // In case iOS does not hand a custom content type to the keyboard: a trait pair no chat field uses.
-        return textDocumentProxy.keyboardType == UIKeyboardType.asciiCapable
-            && textDocumentProxy.returnKeyType == UIReturnKeyType.continue
+        // Not `.asciiCapable` — iOS keeps keyboards that are not ASCII-capable, like this one, out of such fields.
+        return textDocumentProxy.returnKeyType == UIReturnKeyType.continue
+            && textDocumentProxy.autocorrectionType == UITextAutocorrectionType.no
     }
 
     /// The keyboard grows by the chip row only while the row has something in it. SwiftUI cannot

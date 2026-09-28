@@ -6,6 +6,8 @@ struct PhraseDiff: Equatable {
     var missing = 0
     var extra = 0
     var substituted = 0
+    /// The end of the phrase that was never typed: stopping early is not a missed tap.
+    var unfinished = 0
 
     var isPerfect: Bool { missing == 0 && extra == 0 && substituted == 0 }
 
@@ -28,8 +30,11 @@ struct PhraseDiff: Equatable {
                 }
             }
         }
-        var diff = PhraseDiff()
-        var i = a.count, j = b.count
+        // Align with the best-matching start of the phrase; on a tie, the longer one.
+        var end = 0
+        for i in 0...a.count where cost[i][b.count] <= cost[end][b.count] { end = i }
+        var diff = PhraseDiff(unfinished: a.count - end)
+        var i = end, j = b.count
         while i > 0 || j > 0 {
             if i > 0, j > 0, cost[i][j] == cost[i - 1][j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1) {
                 if a[i - 1] != b[j - 1] { diff.substituted += 1 }
