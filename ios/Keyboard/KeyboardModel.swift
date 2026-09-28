@@ -37,6 +37,7 @@ final class KeyboardModel {
     @ObservationIgnored private var lastSpaceTap: Date?
     @ObservationIgnored private var rewriteTask: Task<Void, Never>?
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
+    @ObservationIgnored private var refreshTask: Task<Void, Never>?
     @ObservationIgnored private let haptics = UIImpactFeedbackGenerator(style: .light)
     @ObservationIgnored private let selectionHaptics = UISelectionFeedbackGenerator()
 
@@ -53,10 +54,13 @@ final class KeyboardModel {
     }
 
     var context: ChatAnalysis? { state.freshContext(at: now) }
+    /// Read against `now`, like `context`, so a timed-out spinner or an old error goes away on its own.
+    var isAnalyzing: Bool { state.isAnalyzing(at: now) }
+    var recentError: String? { state.recentError(at: now) }
     var chips: [Suggestion] { variants.isEmpty ? (context?.suggestions ?? []) : variants }
 
     /// The chip row costs ~62pt of the chat above the keyboard; show it only when it has something in it.
-    var barExpanded: Bool { !chips.isEmpty || state.isAnalyzing || showsTargetPicker }
+    var barExpanded: Bool { !chips.isEmpty || isAnalyzing || showsTargetPicker }
 
     /// Without a fresh screenshot the chip row picks who we are writing to: recent friends first, then plain languages.
     var targets: [Target] {
@@ -80,6 +84,26 @@ final class KeyboardModel {
         if context == nil, showsDetails { showsDetails = false }
         // Suggestions take over the row once a screenshot lands.
         if context != nil, showsTargetPicker { showsTargetPicker = false }
+        scheduleRefresh()
+    }
+
+    /// The spinner, the error line and the context expire by time alone, and nothing else re-renders the bar
+    /// when they do — a stuck `analyzingSince` kept the spinner turning at the display's refresh rate. Sleep
+    /// until the next deadline instead of polling, then move `now`.
+    func scheduleRefresh() {
+        refreshTask?.cancel()
+        guard let deadline = state.nextDeadline(after: now) else { return }
+        refreshTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(max(0, deadline.timeIntervalSinceNow)))
+            guard !Task.isCancelled, let self else { return }
+            now = Date()
+            scheduleRefresh()
+        }
+    }
+
+    func stopRefresh() {
+        refreshTask?.cancel()
+        refreshTask = nil
     }
 
     func toggleTargetPicker() {

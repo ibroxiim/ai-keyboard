@@ -82,7 +82,7 @@ struct SuggestionBar: View {
     private var chipRow: some View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
-                    if model.chips.isEmpty && model.state.isAnalyzing {
+                    if model.chips.isEmpty && model.isAnalyzing {
                         HStack(spacing: 6) {
                             ProgressView().controlSize(.small)
                             Text("Javoblar tayyorlanmoqda…").font(.system(size: 13)).foregroundStyle(.secondary)
@@ -135,12 +135,12 @@ struct SuggestionBar: View {
                 .buttonStyle(.plain)
                 closeButton { model.dismissContext() }
             }
-        } else if model.state.isAnalyzing {
+        } else if model.isAnalyzing {
             HStack(spacing: 6) {
                 ProgressView().controlSize(.small)
                 Text("Suhbat o'qilmoqda…").font(.system(size: 13)).foregroundStyle(.secondary)
             }
-        } else if let error = model.state.recentError {
+        } else if let error = model.recentError {
             Text(error).font(.system(size: 12)).foregroundStyle(.red).lineLimit(2)
         } else if !model.hasFullAccess {
             Text("Full Access o'chiq — AI ishlamaydi, faqat yozish mumkin")

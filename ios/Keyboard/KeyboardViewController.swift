@@ -59,9 +59,15 @@ final class KeyboardViewController: UIInputViewController {
         model.showsGlobe = needsInputModeSwitchKey
         model.now = Date()
         model.reloadState()
+        model.scheduleRefresh()
         model.confirmFullAccess()
         model.prepareHaptics()
         model.autoCapitalize()
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        model.stopRefresh()
     }
 
     override func textDidChange(_ textInput: UITextInput?) {
