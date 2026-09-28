@@ -31,6 +31,8 @@ final class KeyboardModel {
     var now = Date()
 
     @ObservationIgnored weak var controller: UIInputViewController?
+    /// Set while the Diagnostika switch records this appearance; `KeysUIView` writes touches into its journal.
+    @ObservationIgnored var diagnostics: KeyboardDiagnostics?
 
     private var proxy: UITextDocumentProxy? { controller?.textDocumentProxy }
     @ObservationIgnored private var lastShiftTap: Date?
@@ -264,8 +266,9 @@ final class KeyboardModel {
         rewriteTask = Task {
             defer { isRewriting = false }
             do {
-                let result = try await Translator.rewrite(
-                    draft: draft, context: context, friend: friend, language: language)
+                let result = try await Signposts.measureAsync("rewrite") {
+                    try await Translator.rewrite(draft: draft, context: context, friend: friend, language: language)
+                }
                 guard !Task.isCancelled else { return }
                 variants = result
             } catch {

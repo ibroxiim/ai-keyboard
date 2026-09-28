@@ -11,8 +11,10 @@ enum Translator {
         jpeg: Data, knownFriends: [String], onQuickRead: @escaping (QuickRead) -> Void
     ) async throws -> (analysis: ChatAnalysis, partialError: Error?) {
         let detailsTask = Task {
-            try await Gemini.generate(
-                ChatDetails.self, system: Prompts.detailsSystem, parts: [.jpeg(jpeg)], schema: Prompts.detailsSchema)
+            try await Signposts.measureAsync("details") {
+                try await Gemini.generate(
+                    ChatDetails.self, system: Prompts.detailsSystem, parts: [.jpeg(jpeg)], schema: Prompts.detailsSchema)
+            }
         }
         var quickParts: [Gemini.Part] = [.jpeg(jpeg)]
         if !knownFriends.isEmpty {
@@ -21,8 +23,10 @@ enum Translator {
         var quick: QuickRead?
         var quickError: Error?
         do {
-            quick = try await Gemini.generate(
-                QuickRead.self, system: Prompts.quickSystem, parts: quickParts, schema: Prompts.quickSchema)
+            quick = try await Signposts.measureAsync("quickRead") {
+                try await Gemini.generate(
+                    QuickRead.self, system: Prompts.quickSystem, parts: quickParts, schema: Prompts.quickSchema)
+            }
             onQuickRead(quick!)
         } catch {
             quickError = error

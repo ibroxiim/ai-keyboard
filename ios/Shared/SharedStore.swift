@@ -4,6 +4,8 @@ enum AppGroup {
     static let id = "group.com.ibrokhim.dmtranslator"
     /// Darwin notification: the app (Back Tap intent) changed the state, the keyboard should reload.
     static let stateChanged = "com.ibrokhim.dmtranslator.stateChanged"
+    /// Darwin notification: the keyboard appended a diagnostics session to `diagnostics.json`.
+    static let diagnosticsChanged = "com.ibrokhim.dmtranslator.diagnosticsChanged"
     /// Debug builds only: `tools/simulate-back-tap.sh` stands in for Back Tap in the Simulator.
     static let simulatedBackTap = "com.ibrokhim.dmtranslator.debug.simulatedBackTap"
 }
@@ -27,6 +29,8 @@ struct SharedState: Codable, Equatable {
     var shortcutRunDate: Date?
     /// App setting: the bottom-row КИР/LAT key becomes an emoji key.
     var emojiKey: Bool?
+    /// App setting (Diagnostika): the keyboard records a session summary per appearance.
+    var diagnosticsEnabled: Bool?
 }
 
 struct Friend: Codable, Hashable, Identifiable {

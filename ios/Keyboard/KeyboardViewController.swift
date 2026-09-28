@@ -5,6 +5,7 @@ final class KeyboardViewController: UIInputViewController {
     private let model = KeyboardModel()
     private var stateObserver: DarwinObserver?
     private var heightConstraint: NSLayoutConstraint?
+    private var diagnostics: KeyboardDiagnostics?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -63,16 +64,57 @@ final class KeyboardViewController: UIInputViewController {
         model.confirmFullAccess()
         model.prepareHaptics()
         model.autoCapitalize()
+        startDiagnostics()
     }
 
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         model.stopRefresh()
+        finishDiagnostics()
+    }
+
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        diagnostics?.memoryWarning()
     }
 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
         model.autoCapitalize()
+    }
+
+    // MARK: Diagnostics
+
+    /// One session per appearance, only while the app's Diagnostika switch is on. Needs Full Access: without it
+    /// the keyboard cannot write to the App Group.
+    private func startDiagnostics() {
+        finishDiagnostics()
+        guard hasFullAccess, model.state.diagnosticsEnabled == true else { return }
+        let session = KeyboardDiagnostics(testMode: isDiagnosticsTestField)
+        diagnostics = session
+        model.diagnostics = session
+    }
+
+    private func finishDiagnostics() {
+        guard let session = diagnostics else { return }
+        diagnostics = nil
+        model.diagnostics = nil
+        let result = session.finish()
+        // A keyboard that flashed up and away tells nothing.
+        guard result.duration >= 1 else { return }
+        DispatchQueue.global(qos: .utility).async {
+            DiagnosticsStore.append(result)
+            DarwinNotification.post(AppGroup.diagnosticsChanged)
+        }
+    }
+
+    /// The app's typing-test field marks itself; only there does the journal keep individual touches.
+    private var isDiagnosticsTestField: Bool {
+        let contentType: UITextContentType? = textDocumentProxy.textContentType ?? nil
+        if contentType?.rawValue == DiagnosticsMarker.contentType { return true }
+        // In case iOS does not hand a custom content type to the keyboard: a trait pair no chat field uses.
+        return textDocumentProxy.keyboardType == UIKeyboardType.asciiCapable
+            && textDocumentProxy.returnKeyType == UIReturnKeyType.continue
     }
 
     /// The keyboard grows by the chip row only while the row has something in it. SwiftUI cannot

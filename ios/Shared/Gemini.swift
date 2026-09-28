@@ -66,7 +66,9 @@ enum Gemini {
         request.setValue(Secrets.geminiAPIKey, forHTTPHeaderField: "x-goog-api-key")
         request.httpBody = payload
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await Signposts.measureAsync("gemini") {
+            try await URLSession.shared.data(for: request)
+        }
         let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard status == 200 else {
