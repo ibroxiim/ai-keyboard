@@ -42,7 +42,8 @@ targets:
             echo "error: App/Resources/AI Keyboard.shortcut is missing. Restore it: git checkout -- 'App/Resources/AI Keyboard.shortcut', then run xcodegen generate."
             exit 1
           fi
-    scheme: {}
+    scheme:
+      testTargets: [AIKeyboardTests]
   TarjimonKeyboard:
     type: app-extension
     platform: iOS
@@ -67,3 +68,20 @@ targets:
       path: Keyboard/TarjimonKeyboard.entitlements
       properties:
         com.apple.security.application-groups: [group.com.ibrokhim.dmtranslator]
+  AIKeyboardTests:
+    type: bundle.unit-test
+    platform: iOS
+    # No host app: the tests compile the pure-logic sources they cover directly.
+    sources:
+      - Tests
+      - Shared/SharedStore.swift
+      - Shared/Models.swift
+      - Shared/TouchOutcome.swift
+      - Keyboard/TouchTracker.swift
+      - Shared/DiagnosticsModel.swift
+      - Shared/PhraseDiff.swift
+      - Keyboard/Diagnostics/TouchJournal.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ibrokhim.dmtranslator.tests
+        GENERATE_INFOPLIST_FILE: YES

@@ -13,10 +13,8 @@ struct KeysRepresentable: UIViewRepresentable {
 }
 
 /// The key area in plain UIKit. SwiftUI gestures added a noticeable delay per press and the key
-/// popup often never rendered on a quick tap; here touches arrive in `touchesBegan` directly:
-/// - popup, haptic and click fire on touch-down, the character is inserted on touch-up (like iOS);
-/// - fast typing rolls over: a new press commits a character that is still held;
-/// - sliding the finger moves the popup to the key under it; dragging space moves the cursor.
+/// popup often never rendered on a quick tap; here touches arrive in `touchesBegan` directly.
+/// What a touch does is decided by `TouchTracker`; this view draws the keys and carries out its actions.
 final class KeysUIView: UIView {
     struct Config: Equatable {
         var layer: KeyboardModel.Layer
@@ -32,9 +30,15 @@ final class KeysUIView: UIView {
         case shift, backspace, globe, space, newline, alphabet, emoji
         case layer(KeyboardModel.Layer, String)
 
-        var isCharacter: Bool {
-            if case .char = self { return true }
-            return false
+        var kind: TouchTracker.KeyKind {
+            switch self {
+            case .char: .character
+            case .space: .space
+            case .newline: .newline
+            case .backspace: .backspace
+            case .shift: .shift
+            case .globe, .alphabet, .emoji, .layer: .function
+            }
         }
     }
 
@@ -59,30 +63,15 @@ final class KeysUIView: UIView {
     ]
     private static let punctuation = [".", ",", "?", "!", "'"]
 
-    private final class TouchState {
-        let touch: UITouch
-        var index: Int
-        let startX: CGFloat
-        var committed = false
-        var dragging = false
-        var consumed: CGFloat = 0
-
-        init(touch: UITouch, index: Int, startX: CGFloat) {
-            self.touch = touch
-            self.index = index
-            self.startX = startX
-        }
-    }
-
     private let model: KeyboardModel
     private var config: Config?
     private var needsRebuild = true
     private var builtWidth: CGFloat = 0
     private var caps: [KeyCapView] = []
     private var hitFrames: [CGRect] = []
-    private var active: [TouchState] = []
+    private var positions: [TouchJournal.KeyPosition] = []
+    private var tracker = TouchTracker()
     private let popup = KeyPopupView()
-    private weak var popupOwner: TouchState?
     private var repeatTimer: Timer?
 
     init(model: KeyboardModel) {
@@ -160,10 +149,12 @@ final class KeysUIView: UIView {
 
     private func rebuild() {
         guard let config else { return }
-        cancelAllTouches()
+        // Types what a finger still holds on the old keys before they go away (it used to be dropped).
+        run(.willRebuild)
         caps.forEach { $0.removeFromSuperview() }
         caps = []
         hitFrames = []
+        positions = []
 
         let gap = KeyboardMetrics.keyGap
         let rowGap = KeyboardMetrics.rowGap
@@ -184,10 +175,13 @@ final class KeysUIView: UIView {
                 let top = rowIndex == 0 ? 0 : y - rowGap / 2
                 let bottomEdge = rowIndex == rows.count - 1 ? bounds.height : y + keyHeight + rowGap / 2
                 hitFrames.append(CGRect(x: left, y: top, width: right - left, height: bottomEdge - top))
+                positions.append(TouchJournal.KeyPosition(
+                    row: rowIndex, column: column, rowLength: row.count, isBottomRow: rowIndex == rows.count - 1))
                 x += width + gap
             }
             y += keyHeight + rowGap
         }
+        tracker.keys = caps.map(\.key.kind)
         builtWidth = bounds.width
         needsRebuild = false
         updateLabels()
@@ -205,122 +199,95 @@ final class KeysUIView: UIView {
     // MARK: Touches
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        let alive = Set((event?.allTouches ?? touches).map { ObjectIdentifier($0) })
         for touch in touches {
             let point = touch.location(in: self)
-            guard let index = keyIndex(at: point) else { continue }
-            // Rollover: a second finger landing commits the character the first one still holds.
-            for other in active where !other.committed && caps[other.index].key.isCharacter {
-                commit(other)
-            }
-            let state = TouchState(touch: touch, index: index, startX: point.x)
-            active.append(state)
-            press(state)
+            guard let key = keyIndex(at: point) else { continue }
+            run(.began(id: ObjectIdentifier(touch), key: key, x: point.x, time: touch.timestamp, alive: alive))
         }
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         for touch in touches {
-            guard let state = active.first(where: { $0.touch === touch }) else { continue }
             let point = touch.location(in: self)
-            switch caps[state.index].key {
-            case .space:
-                dragCursor(state, x: point.x)
-            case .char where !state.committed:
-                if let index = keyIndex(at: point), index != state.index, caps[index].key.isCharacter {
-                    state.index = index
-                    showPopup(for: state)
-                }
-            default:
-                break
-            }
+            run(.moved(id: ObjectIdentifier(touch), key: keyIndex(at: point), x: point.x))
         }
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         for touch in touches {
-            guard let state = active.first(where: { $0.touch === touch }) else { continue }
-            if !state.committed { release(state) }
-            finish(state)
+            run(.ended(id: ObjectIdentifier(touch), time: touch.timestamp))
         }
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         for touch in touches {
-            guard let state = active.first(where: { $0.touch === touch }) else { continue }
-            finish(state)
+            run(.cancelled(id: ObjectIdentifier(touch)))
         }
     }
 
-    private func press(_ state: TouchState) {
-        let key = caps[state.index].key
-        model.keyDown()
-        switch key {
-        case .char:
-            showPopup(for: state)
-        case .shift:
-            // Like iOS: shift reacts on touch-down.
-            state.committed = true
-            model.tapShift()
+    /// Feeds one event to the tracker and carries out its actions. With Diagnostika on, the outcomes and their
+    /// timing go to the session journal (`systemUptime` is the clock `UITouch.timestamp` uses).
+    private func run(_ event: TouchTracker.Event) {
+        let handledAt = ProcessInfo.processInfo.systemUptime
+        let output = Signposts.measure("touch") { () -> TouchTracker.Output in
+            let output = tracker.handle(event)
+            output.actions.forEach(perform)
+            return output
+        }
+        guard !output.records.isEmpty, let diagnostics = model.diagnostics else { return }
+        let doneAt = ProcessInfo.processInfo.systemUptime
+        for record in output.records where record.key < positions.count {
+            diagnostics.journal.record(
+                record, at: positions[record.key], kind: tracker.keys[record.key],
+                handledAt: handledAt, doneAt: doneAt)
+        }
+    }
+
+    private func perform(_ action: TouchTracker.Action) {
+        switch action {
+        case .keyDown:
+            model.keyDown()
+        case .type(let key):
+            if case .char(let character) = caps[key].key { model.type(character) }
+        case .space:
+            model.space()
+        case .newline:
+            model.newline()
         case .backspace:
-            state.committed = true
-            caps[state.index].isPressed = true
             model.backspace()
+        case .shift:
+            model.tapShift()
+        case .release(let key):
+            release(caps[key].key)
+        case .press(let key):
+            caps[key].isPressed = true
+        case .unpress(let key):
+            if key < caps.count { caps[key].isPressed = false }
+        case .startRepeat:
             startRepeat()
-        default:
-            caps[state.index].isPressed = true
+        case .stopRepeat:
+            stopRepeat()
+        case .beginCursorDrag(let key):
+            caps[key].showDragHint()
+        case .endCursorDrag(let key):
+            if key < caps.count, let config { caps[key].configure(config) }
+        case .moveCursor(let offset):
+            model.moveCursor(by: offset)
+        case .showPopup(let key):
+            showPopup(key)
+        case .hidePopup:
+            popup.isHidden = true
         }
     }
 
-    private func commit(_ state: TouchState) {
-        guard case .char(let character) = caps[state.index].key else { return }
-        state.committed = true
-        model.type(character)
-        if popupOwner === state { hidePopup() }
-    }
-
-    private func release(_ state: TouchState) {
-        switch caps[state.index].key {
-        case .char(let character): model.type(character)
-        case .space: if !state.dragging { model.space() }
-        case .newline: model.newline()
+    private func release(_ key: Key) {
+        switch key {
         case .globe: model.switchKeyboard()
         case .alphabet: model.toggleAlphabet()
         case .emoji: model.showsEmoji = true
         case .layer(let layer, _): model.setLayer(layer)
-        case .shift, .backspace: break
-        }
-    }
-
-    private func finish(_ state: TouchState) {
-        if state.index < caps.count {
-            let cap = caps[state.index]
-            cap.isPressed = false
-            if case .backspace = cap.key { stopRepeat() }
-            if case .space = cap.key, state.dragging, let config { cap.configure(config) }
-        }
-        if popupOwner === state { hidePopup() }
-        active.removeAll { $0 === state }
-    }
-
-    private func cancelAllTouches() {
-        active.removeAll()
-        hidePopup()
-        stopRepeat()
-    }
-
-    private func dragCursor(_ state: TouchState, x: CGFloat) {
-        let step: CGFloat = 9
-        let dx = x - state.startX
-        if !state.dragging {
-            guard abs(dx) > 12 else { return }
-            state.dragging = true
-            state.consumed = dx
-            caps[state.index].showDragHint()
-        }
-        let steps = Int((dx - state.consumed) / step)
-        if steps != 0 {
-            model.moveCursor(by: steps)
-            state.consumed += CGFloat(steps) * step
+        case .char, .shift, .backspace, .space, .newline: break
         }
     }
 
@@ -343,16 +310,10 @@ final class KeysUIView: UIView {
     // MARK: Popup
 
     /// Drawn in the keyboard's root view so the top row's popup can rise over the suggestion bar.
-    private func showPopup(for state: TouchState) {
+    private func showPopup(_ key: Int) {
         guard let host = model.controller?.view ?? superview else { return }
-        let cap = caps[state.index]
+        let cap = caps[key]
         popup.show(text: cap.displayText, keyFrame: convert(cap.frame, to: host), in: host)
-        popupOwner = state
-    }
-
-    private func hidePopup() {
-        popup.isHidden = true
-        popupOwner = nil
     }
 }
 

@@ -47,6 +47,7 @@ struct ContentView: View {
                 testSection
                 languageSection
                 keyboardSection
+                diagnosticsSection
                 friendsSection
                 contextSection
             }
@@ -193,6 +194,16 @@ struct ContentView: View {
             Text("Klaviatura")
         } footer: {
             Text("Yoqilsa, pastki qatordagi КИР/LAT tugmasi 😀 ga almashadi va emoji panelini ochadi. Klaviatura lotin yozuvida qoladi — kirill kerak bo'lsa, o'chiring.")
+        }
+    }
+
+    private var diagnosticsSection: some View {
+        Section {
+            NavigationLink {
+                DiagnosticsView(store: store)
+            } label: {
+                Label("Diagnostika", systemImage: "stethoscope")
+            }
         }
     }
 

@@ -4,6 +4,8 @@ enum AppGroup {
     static let id = "group.com.ibrokhim.dmtranslator"
     /// Darwin notification: the app (Back Tap intent) changed the state, the keyboard should reload.
     static let stateChanged = "com.ibrokhim.dmtranslator.stateChanged"
+    /// Darwin notification: the keyboard appended a diagnostics session to `diagnostics.json`.
+    static let diagnosticsChanged = "com.ibrokhim.dmtranslator.diagnosticsChanged"
     /// Debug builds only: `tools/simulate-back-tap.sh` stands in for Back Tap in the Simulator.
     static let simulatedBackTap = "com.ibrokhim.dmtranslator.debug.simulatedBackTap"
 }
@@ -27,6 +29,8 @@ struct SharedState: Codable, Equatable {
     var shortcutRunDate: Date?
     /// App setting: the bottom-row КИР/LAT key becomes an emoji key.
     var emojiKey: Bool?
+    /// App setting (Diagnostika): the keyboard records a session summary per appearance.
+    var diagnosticsEnabled: Bool?
 }
 
 struct Friend: Codable, Hashable, Identifiable {
@@ -81,6 +85,8 @@ enum SharedStore {
     /// Suggestions from an old screenshot are worse than none — the chat has moved on.
     static let contextLifetime: TimeInterval = 15 * 60
     static let analysisTimeout: TimeInterval = 60
+    /// How long an analysis error stays in the keyboard's status line.
+    static let errorLifetime: TimeInterval = 120
 
     static var containerURL: URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppGroup.id)
@@ -115,14 +121,33 @@ extension SharedState {
         return context
     }
 
-    var isAnalyzing: Bool {
+    var isAnalyzing: Bool { isAnalyzing(at: Date()) }
+
+    func isAnalyzing(at now: Date) -> Bool {
         guard let analyzingSince else { return false }
-        return Date().timeIntervalSince(analyzingSince) < SharedStore.analysisTimeout
+        return now.timeIntervalSince(analyzingSince) < SharedStore.analysisTimeout
     }
 
-    var recentError: String? {
-        guard let lastError, let lastErrorDate, Date().timeIntervalSince(lastErrorDate) < 120 else { return nil }
+    var recentError: String? { recentError(at: Date()) }
+
+    func recentError(at now: Date) -> String? {
+        guard let lastError, let lastErrorDate,
+              now.timeIntervalSince(lastErrorDate) < SharedStore.errorLifetime
+        else { return nil }
         return lastError
+    }
+
+    /// The next moment something time-based changes on screen: the analysis spinner times out, the error line
+    /// expires or the context goes stale. Nothing else re-renders the keyboard then, so it wakes for this.
+    func nextDeadline(after now: Date) -> Date? {
+        [
+            analyzingSince.map { $0 + SharedStore.analysisTimeout },
+            lastErrorDate.map { $0 + SharedStore.errorLifetime },
+            contextDate.map { $0 + SharedStore.contextLifetime },
+        ]
+        .compactMap { $0 }
+        .filter { $0 > now }
+        .min()
     }
 
     var language: String { freshContext?.language ?? targetLanguage ?? "English" }
