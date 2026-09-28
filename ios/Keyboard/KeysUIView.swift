@@ -235,7 +235,11 @@ final class KeysUIView: UIView {
             output.actions.forEach(perform)
             return output
         }
-        guard !output.records.isEmpty, let diagnostics = model.diagnostics else { return }
+        guard let diagnostics = model.diagnostics else { return }
+        if case let .began(_, key, _, time, _) = event, key < positions.count {
+            diagnostics.journal.recordTouchDown(at: positions[key], time: time, handledAt: handledAt)
+        }
+        guard !output.records.isEmpty else { return }
         let doneAt = ProcessInfo.processInfo.systemUptime
         for record in output.records where record.key < positions.count {
             diagnostics.journal.record(

@@ -55,4 +55,15 @@ final class TouchJournalTests: XCTestCase {
         XCTAssertEqual(test.detail.first?.outcome, "typed")
         XCTAssertEqual(test.detail.first?.t ?? -1, 1.5, accuracy: 0.0001)
     }
+
+    func testTouchDownDeliveryIsKeptPerZone() {
+        var journal = TouchJournal(keepsDetail: false, start: 0)
+        journal.recordTouchDown(at: center, time: 10, handledAt: 10.015)
+        journal.recordTouchDown(at: edge, time: 20, handledAt: 20.110)
+        journal.recordTouchDown(at: edge, time: 30, handledAt: 30.120)
+        XCTAssertEqual(journal.touchDownMs["center"]?.count, 1)
+        XCTAssertEqual(journal.touchDownMs["center"]?.first ?? -1, 15, accuracy: 0.001)
+        XCTAssertEqual(journal.touchDownMs["edge"]?.count, 2)
+        XCTAssertNil(journal.touchDownMs["bottom"])
+    }
 }

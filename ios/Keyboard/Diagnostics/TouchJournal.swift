@@ -24,11 +24,19 @@ struct TouchJournal {
     private(set) var upToInsertMs: [Double] = []
     private(set) var deliveryMs: [Double] = []
     private(set) var detail: [DiagnosticSession.Touch] = []
+    /// Touch-down delivery by zone. Letters act on touch-up, so `deliveryMs` alone never shows a late
+    /// touch-down — which is what makes the popup and haptic feel slow.
+    private(set) var touchDownMs: [String: [Double]] = [:]
 
     /// `start`: session start on the `systemUptime` clock, the one `UITouch.timestamp` uses.
     init(keepsDetail: Bool, start: TimeInterval) {
         self.keepsDetail = keepsDetail
         self.start = start
+    }
+
+    /// `time`: the touch-down's `UITouch.timestamp`; `handledAt`: when `touchesBegan` reached us.
+    mutating func recordTouchDown(at position: KeyPosition, time: TimeInterval, handledAt: TimeInterval) {
+        touchDownMs[position.zone.rawValue, default: []].append(max(0, (handledAt - time) * 1000))
     }
 
     /// `handledAt`: when our touch handler started; `doneAt`: when its actions (the insert) had finished.

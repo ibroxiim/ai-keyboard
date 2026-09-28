@@ -44,7 +44,8 @@ final class KeyboardDiagnostics {
             mainBusy: mainThread.summary,
             cpu: .init(seconds: cpuSeconds, percent: duration > 0 ? cpuSeconds / duration * 100 : 0),
             memoryMB: .init(start: startMemory, end: ProcessStats.memoryMB(), warnings: memoryWarnings),
-            thermal: thermal, detail: journal.keepsDetail ? journal.detail : nil)
+            thermal: thermal, detail: journal.keepsDetail ? journal.detail : nil,
+            touchDownMs: journal.touchDownMs.compactMapValues { DiagnosticSession.Latency(samples: $0) })
     }
 
     private func recordThermalState() {

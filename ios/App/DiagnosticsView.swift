@@ -153,6 +153,13 @@ private struct SessionRow: View {
             Text("\(session.touches) teginish · yo'qolgan \(session.lost) · p95 \(milliseconds(session.upToInsertMs?.p95)) · CPU \(String(format: "%.1f", session.cpu.percent))% · \(String(format: "%.0f", session.memoryMB.end)) MB")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            if let touchDown = session.touchDownMs, !touchDown.isEmpty {
+                Text("Tegish yetib kelishi p50/p95: " + ["center", "edge", "bottom"].compactMap { zone in
+                    touchDown[zone].map { "\(zone) \(Int($0.p50))/\(Int($0.p95))" }
+                }.joined(separator: " · ") + " ms")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             if session.mainBusy.over50ms > 0 {
                 Text("Asosiy oqim > 50 ms: \(session.mainBusy.over50ms) marta, eng uzuni \(String(format: "%.0f", session.mainBusy.maxMs)) ms")
                     .font(.caption)

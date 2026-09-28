@@ -88,6 +88,8 @@ struct DiagnosticSession: Codable, Equatable, Identifiable {
     var memoryMB: Memory
     var thermal: [Thermal]
     var detail: [Touch]?
+    /// Touch-down delivery by zone (`DiagnosticZone.rawValue`): what delays the popup and haptic.
+    var touchDownMs: [String: Latency]? = nil
 
     var id: String { "\(start.timeIntervalSinceReferenceDate)|\(duration)" }
 
