@@ -19,4 +19,9 @@ final class GeminiRetryTests: XCTestCase {
         XCTAssertFalse(GeminiError.triesNextModel(after: URLError(.notConnectedToInternet)))
         XCTAssertFalse(GeminiError.triesNextModel(after: CancellationError()))
     }
+
+    func testUnreadableJSONTriesTheNextModel() {
+        let error = DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "cut off"))
+        XCTAssertTrue(GeminiError.triesNextModel(after: error))
+    }
 }

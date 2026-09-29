@@ -13,12 +13,19 @@ enum Gemini {
         }
     }
 
-    /// Tried in order. On 2026-09-28 3.5-flash-lite took 14–27 s per call (a screenshot often past the timeout)
-    /// and 3.5-flash answered only 503, while 3.6-flash read a screenshot in 3–4 s — so it leads now.
-    static let models = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"]
+    /// Raced by `Hedge`, in this order. Which one is up changes day to day: on 2026-09-28 3.5-flash-lite took
+    /// 14–27 s and 3.6-flash answered in 2–4 s; on 2026-09-29 3.6-flash returned 503 and lite answered in 2–3 s.
+    /// All of them take `thinkingLevel: minimal` (3.7/3.8-flash do not).
+    static let models = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-3.5-flash"]
 
-    /// Per attempt. Three attempts fit the keyboard's 60 s analysis window.
+    /// Per attempt.
     static let attemptTimeout: TimeInterval = 20
+
+    /// How long a model may stay quiet before the next one is started alongside it. A screenshot takes longer
+    /// to read than a rewrite, so it gets more time before paying for a second request.
+    static func hedgeDelay(for parts: [Part]) -> Duration {
+        parts.contains { if case .jpeg = $0 { true } else { false } } ? .seconds(6) : .seconds(4)
+    }
 
     static func generate<T: Decodable>(
         _ type: T.Type, system: String, parts: [Part], schema: [String: Any]
@@ -35,16 +42,12 @@ enum Gemini {
         ]
         let payload = try JSONSerialization.data(withJSONObject: body)
 
-        var lastError: Error = GeminiError.empty
-        for model in models {
-            do {
-                let text = try await call(model: model, payload: payload)
-                return try JSONDecoder().decode(T.self, from: Data(text.utf8))
-            } catch where GeminiError.triesNextModel(after: error) {
-                lastError = error
-            }
+        return try await Hedge.first(
+            models, after: hedgeDelay(for: parts), isRetriable: GeminiError.triesNextModel(after:)
+        ) { model in
+            let text = try await call(model: model, payload: payload)
+            return try JSONDecoder().decode(T.self, from: Data(text.utf8))
         }
-        throw lastError
     }
 
     private static func call(model: String, payload: Data) async throws -> String {

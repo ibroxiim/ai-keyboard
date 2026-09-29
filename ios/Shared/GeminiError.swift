@@ -22,10 +22,11 @@ enum GeminiError: LocalizedError {
         }
     }
 
-    /// A timeout or a dropped connection is how an overloaded model often shows up — worth the next one. No
-    /// connection at all, or a cancelled request, would fail the same way again.
+    /// A timeout or a dropped connection is how an overloaded model often shows up, and a reply cut off mid-JSON
+    /// is worth another model too. No connection at all, or a cancelled request, would fail the same way again.
     static func triesNextModel(after error: Error) -> Bool {
         if let error = error as? GeminiError { return error.triesNextModel }
+        if error is DecodingError { return true }
         if let error = error as? URLError { return [.timedOut, .networkConnectionLost].contains(error.code) }
         return false
     }
