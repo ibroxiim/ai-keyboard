@@ -83,6 +83,7 @@ targets:
       - Keyboard/Diagnostics/TouchJournal.swift
       - Shared/GeminiError.swift
       - Shared/Hedge.swift
+      - Shared/ProvisioningExpiry.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ibrokhim.dmtranslator.tests

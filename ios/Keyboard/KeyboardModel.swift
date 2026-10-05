@@ -29,6 +29,8 @@ final class KeyboardModel {
     /// Context freshness is time-based; views read it against this, refreshed on every appearance,
     /// so an expired screenshot also disappears (and the bar collapses) without any state change.
     var now = Date()
+    /// "⏳ 2 kun" beside the target pill while the signing profile is about to run out (see `ProvisioningExpiry`).
+    var expiryNote: String?
 
     @ObservationIgnored weak var controller: UIInputViewController?
     /// Set while the Diagnostika switch records this appearance; `KeysUIView` writes touches into its journal.

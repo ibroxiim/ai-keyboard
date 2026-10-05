@@ -59,6 +59,9 @@ final class KeyboardViewController: UIInputViewController {
         model.hasFullAccess = hasFullAccess
         model.showsGlobe = needsInputModeSwitchKey
         model.now = Date()
+        // Written only when it changes, like every observed property — a keystroke must not redraw the bar.
+        let expiryNote = ProvisioningExpiry.keyboardNote(expiry: ProvisioningExpiry.expirationDate(), now: model.now)
+        if model.expiryNote != expiryNote { model.expiryNote = expiryNote }
         model.reloadState()
         model.scheduleRefresh()
         model.confirmFullAccess()

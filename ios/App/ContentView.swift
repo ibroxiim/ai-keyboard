@@ -30,6 +30,7 @@ struct ContentView: View {
     @State private var errorText: String?
     @State private var testText = ""
     @FocusState private var testFieldFocused: Bool
+    @State private var notificationsAllowed = true
 
     private var state: SharedState { store.state }
     private let shortcutFile = Bundle.main.url(forResource: "AI Keyboard", withExtension: "shortcut")
@@ -43,6 +44,7 @@ struct ContentView: View {
                             .foregroundStyle(.red)
                     }
                 }
+                signingSection
                 setupSection
                 testSection
                 languageSection
@@ -53,12 +55,58 @@ struct ContentView: View {
             }
             .navigationTitle("AI Keyboard")
         }
+        .task { await refreshExpiryReminders() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { store.reload() }
+            guard phase == .active else { return }
+            store.reload()
+            Task { await refreshExpiryReminders() }
         }
         .onChange(of: pickerItem) { _, item in
             guard let item else { return }
             analyze(item)
+        }
+    }
+
+    // MARK: Signing
+
+    private func refreshExpiryReminders() async {
+        await ExpiryReminder.refresh()
+        notificationsAllowed = await ExpiryReminder.notificationsAllowed()
+    }
+
+    /// When the free-Apple-ID signing runs out the app stops opening; this shows how long is left. Only on builds
+    /// that carry a profile — not in the Simulator.
+    @ViewBuilder
+    private var signingSection: some View {
+        if let expiry = ProvisioningExpiry.expirationDate() {
+            let now = Date()
+            let status = ProvisioningExpiry.status(expiry: expiry, now: now)
+            Section {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(status == .expired
+                            ? "Imzo muddati tugagan"
+                            : "Imzo \(ProvisioningExpiry.remainingText(expiry: expiry, now: now)) ichida tugaydi")
+                            .font(.headline)
+                        Text(expiry.formatted(date: .abbreviated, time: .shortened))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: status == .valid ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
+                        .foregroundStyle(status == .valid ? Color.green : Color.orange)
+                }
+                if !notificationsAllowed {
+                    Button("Bildirishnomalar o'chiq — eslatma kelmaydi. Yoqish") {
+                        UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
+                    }
+                    .font(.footnote)
+                }
+            } header: {
+                Text("Imzo")
+            } footer: {
+                Text("Bepul Apple ID bilan o'rnatilgan ilova 7 kundan keyin ochilmay qoladi. Muddatga yaqin telefonni Mac'ga ulab, qayta o'rnating (Xcode → Run). Eslatma bildirishnoma va klaviaturadagi ⏳ belgisi orqali keladi.")
+            }
         }
     }
 

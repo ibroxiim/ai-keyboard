@@ -167,6 +167,8 @@ struct SuggestionBar: View {
                 .buttonStyle(.plain)
                 if model.showsTargetPicker {
                     Text("kimga yozyapsiz?").font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
+                } else if let note = model.expiryNote {
+                    Text(note).font(.system(size: 12, weight: .semibold)).foregroundStyle(.orange).lineLimit(1)
                 }
             }
         }
