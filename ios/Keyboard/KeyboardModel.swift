@@ -21,6 +21,10 @@ final class KeyboardModel {
     var isRewriting = false
     var notice: String?
     var showsDetails = false
+    /// A chip cuts a reply at two lines; this is the full-size list of every reply over the keys.
+    var showsVariantList = false
+    /// The reply the list scrolls to when it opens (long press on a chip); nil — the top.
+    var variantListFocus: Suggestion.ID?
     var hasFullAccess = false
     var showsGlobe = false
     /// The friend/language chip row, opened from the collapsed "✨ → English ⌄" pill.
@@ -86,9 +90,36 @@ final class KeyboardModel {
         // ✨ variants belong to the chat they were made for.
         if state.contextDate != previousContextDate, !variants.isEmpty { variants = [] }
         if context == nil, showsDetails { showsDetails = false }
+        closeVariantListIfEmpty()
         // Suggestions take over the row once a screenshot lands.
         if context != nil, showsTargetPicker { showsTargetPicker = false }
         scheduleRefresh()
+    }
+
+    func openVariantList(focus: Suggestion? = nil) {
+        guard !chips.isEmpty else { return }
+        keyDown()
+        if showsDetails { showsDetails = false }
+        if showsEmoji { showsEmoji = false }
+        if showsTargetPicker { showsTargetPicker = false }
+        if variantListFocus != focus?.id { variantListFocus = focus?.id }
+        if !showsVariantList { showsVariantList = true }
+    }
+
+    /// Written only when it changes, like every observed property.
+    func closeVariantList() {
+        if showsVariantList { showsVariantList = false }
+        if variantListFocus != nil { variantListFocus = nil }
+    }
+
+    /// The replies expire or get dismissed; a list left open would reappear with the next ones.
+    private func closeVariantListIfEmpty() {
+        if chips.isEmpty { closeVariantList() }
+    }
+
+    func toggleDetails() {
+        if !showsDetails { closeVariantList() }
+        showsDetails.toggle()
     }
 
     /// The spinner, the error line and the context expire by time alone, and nothing else re-renders the bar
@@ -101,6 +132,7 @@ final class KeyboardModel {
             try? await Task.sleep(for: .seconds(max(0, deadline.timeIntervalSinceNow)))
             guard !Task.isCancelled, let self else { return }
             now = Date()
+            closeVariantListIfEmpty()
             scheduleRefresh()
         }
     }
@@ -284,10 +316,12 @@ final class KeyboardModel {
         keyDown()
         replaceAllText(with: suggestion.text)
         variants = []
+        closeVariantList()
     }
 
     func dismissVariants() {
         variants = []
+        closeVariantListIfEmpty()
     }
 
     func dismissContext() {
@@ -296,6 +330,7 @@ final class KeyboardModel {
             $0.contextDate = nil
         }
         variants = []
+        closeVariantList()
         reloadState()
     }
 

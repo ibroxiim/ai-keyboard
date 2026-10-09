@@ -42,6 +42,12 @@ struct KeyboardView: View {
             if model.showsDetails, let context = model.context {
                 ContextDetails(context: context) { model.showsDetails = false }
                     .frame(height: KeyboardMetrics.keysHeight)
+            } else if model.showsVariantList, !model.chips.isEmpty {
+                VariantList(
+                    title: model.variants.isEmpty ? "Tayyor javoblar" : "✨ Variantlar",
+                    suggestions: model.chips, focus: model.variantListFocus,
+                    pick: { model.pick($0) }, close: model.closeVariantList)
+                    .frame(height: KeyboardMetrics.keysHeight)
             } else if model.showsEmoji {
                 EmojiRepresentable(model: model)
                     .frame(height: KeyboardMetrics.keysHeight)
@@ -68,6 +74,7 @@ struct SuggestionBar: View {
             HStack(spacing: 8) {
                 status
                 Spacer(minLength: 0)
+                if !model.chips.isEmpty { expandButton }
                 magicButton
             }
             .frame(height: KeyboardMetrics.statusHeight)
@@ -99,7 +106,9 @@ struct SuggestionBar: View {
                         }
                     } else {
                         ForEach(model.chips) { suggestion in
-                            Chip(suggestion: suggestion) { model.pick(suggestion) }
+                            Chip(
+                                suggestion: suggestion, pick: { model.pick(suggestion) },
+                                expand: { model.openVariantList(focus: suggestion) })
                         }
                     }
                 }
@@ -125,7 +134,7 @@ struct SuggestionBar: View {
         } else if let context = model.context {
             // The translation arrives before the suggestions; show it as soon as it is there.
             HStack(spacing: 6) {
-                Button { model.showsDetails.toggle() } label: {
+                Button { model.toggleDetails() } label: {
                     Text(contextLine(context))
                         .font(.system(size: 12.5))
                         .foregroundStyle(.primary)
@@ -195,6 +204,22 @@ struct SuggestionBar: View {
         .disabled(model.isRewriting)
     }
 
+    /// Opens every reply in full — a chip shows two lines of it.
+    private var expandButton: some View {
+        Button {
+            if model.showsVariantList { model.closeVariantList() } else { model.openVariantList() }
+        } label: {
+            Image(systemName: model.showsVariantList
+                ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 36, height: 30)
+                .background(Capsule().fill(KeyboardColors.key))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Javoblarni to'liq ko'rish")
+    }
+
     private func closeButton(_ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: "xmark.circle.fill")
@@ -206,24 +231,84 @@ struct SuggestionBar: View {
 
 struct Chip: View {
     let suggestion: Suggestion
-    let action: () -> Void
+    let pick: () -> Void
+    /// Long press: the whole reply in the full-size list, scrolled to this one. A plain tap and a long press are
+    /// separate gestures here — a `Button` would also fire its tap when the long press is released.
+    let expand: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(suggestion.text)
+                .font(.system(size: 13.5, weight: .medium))
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+            Text(suggestion.uz)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .multilineTextAlignment(.leading)
+        .padding(.horizontal, 10)
+        .frame(maxWidth: 240, maxHeight: .infinity, alignment: .leading)
+        .fixedSize(horizontal: true, vertical: false)
+        .background(RoundedRectangle(cornerRadius: 10).fill(KeyboardColors.key))
+        .shadow(color: KeyboardColors.shadow, radius: 0, x: 0, y: 1)
+        .contentShape(RoundedRectangle(cornerRadius: 10))
+        .onTapGesture(perform: pick)
+        .onLongPressGesture(minimumDuration: 0.35, perform: expand)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// Every reply in full, over the keys — a chip cuts them at two lines. Tap a card to use that reply.
+struct VariantList: View {
+    let title: String
+    let suggestions: [Suggestion]
+    /// The card to scroll to when the list opens; nil — the top.
+    let focus: Suggestion.ID?
+    let pick: (Suggestion) -> Void
+    let close: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(title).font(.system(size: 14, weight: .semibold))
+                Spacer()
+                Button("Klaviatura", action: close).font(.system(size: 14, weight: .medium))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 8) {
+                        ForEach(suggestions) { suggestion in
+                            card(suggestion).id(suggestion.id)
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 8)
+                }
+                .onAppear {
+                    if let focus { proxy.scrollTo(focus, anchor: .top) }
+                }
+            }
+        }
+    }
+
+    private func card(_ suggestion: Suggestion) -> some View {
+        Button { pick(suggestion) } label: {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(suggestion.text)
-                    .font(.system(size: 13.5, weight: .medium))
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(.primary)
-                    .lineLimit(2)
                 Text(suggestion.uz)
-                    .font(.system(size: 11))
+                    .font(.system(size: 13))
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
             .multilineTextAlignment(.leading)
-            .padding(.horizontal, 10)
-            .frame(maxWidth: 240, maxHeight: .infinity, alignment: .leading)
-            .fixedSize(horizontal: true, vertical: false)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
             .background(RoundedRectangle(cornerRadius: 10).fill(KeyboardColors.key))
             .shadow(color: KeyboardColors.shadow, radius: 0, x: 0, y: 1)
         }
