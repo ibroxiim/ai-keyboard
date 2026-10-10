@@ -1,3 +1,4 @@
+import os
 import SwiftUI
 import UIKit
 
@@ -11,6 +12,7 @@ final class KeyboardViewController: UIInputViewController {
         super.viewDidLoad()
         inputView = KeyboardInputView(frame: .zero, inputViewStyle: .keyboard)
         model.controller = self
+        model.openApp = { [weak self] url in self?.openApp(url) }
 
         let host = UIHostingController(rootView: KeyboardView(model: model))
         host.view.backgroundColor = .clear
@@ -63,6 +65,7 @@ final class KeyboardViewController: UIInputViewController {
         let expiryNote = ProvisioningExpiry.keyboardNote(expiry: ProvisioningExpiry.expirationDate(), now: model.now)
         if model.expiryNote != expiryNote { model.expiryNote = expiryNote }
         model.reloadState()
+        model.reconcileVoice()
         model.scheduleRefresh()
         model.confirmFullAccess()
         model.prepareHaptics()
@@ -84,6 +87,29 @@ final class KeyboardViewController: UIInputViewController {
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
         model.autoCapitalize()
+    }
+
+    // MARK: Voice
+
+    /// A keyboard has no `UIApplication.shared`; the app is the end of the responder chain. `openURL:options:
+    /// completionHandler:` is called through its implementation because the typed method is unavailable in
+    /// extensions. Not documented by Apple — whether iOS lets it through is seen from the app answering
+    /// (`VoiceStatus.openFailed` after 6 s otherwise).
+    func openApp(_ url: URL) {
+        var responder: UIResponder? = self
+        while let current = responder {
+            if let application = current as? UIApplication {
+                // A C function type can only carry Objective-C types: NSURL and NSDictionary, not URL and [:].
+                typealias Open = @convention(c) (AnyObject, Selector, NSURL, NSDictionary, AnyObject?) -> Void
+                let selector = NSSelectorFromString("openURL:options:completionHandler:")
+                if let implementation = application.method(for: selector) {
+                    unsafeBitCast(implementation, to: Open.self)(application, selector, url as NSURL, [:] as NSDictionary, nil)
+                    Logger(subsystem: "com.ibrokhim.dmtranslator", category: "voice").info("asked the app to open")
+                }
+                return
+            }
+            responder = current.next
+        }
     }
 
     // MARK: Diagnostics

@@ -75,6 +75,7 @@ struct SuggestionBar: View {
                 status
                 Spacer(minLength: 0)
                 if !model.chips.isEmpty { expandButton }
+                micButton
                 magicButton
             }
             .frame(height: KeyboardMetrics.statusHeight)
@@ -126,6 +127,8 @@ struct SuggestionBar: View {
                 .font(.system(size: 12))
                 .foregroundStyle(.orange)
                 .lineLimit(2)
+        } else if model.voiceStatus != .idle {
+            voiceStatusView
         } else if !model.variants.isEmpty {
             HStack(spacing: 6) {
                 Text("✨ Variantlar — birini tanlang").font(.system(size: 13, weight: .medium))
@@ -202,6 +205,61 @@ struct SuggestionBar: View {
             .background(Capsule().fill(Color.accentColor))
         }
         .disabled(model.isRewriting)
+    }
+
+    /// 🎤: starts dictation, stops it while it records, or puts a finished result in.
+    private var micButton: some View {
+        let status = model.voiceStatus
+        let busy = status == .opening || status == .transcribing
+        return Button(action: model.tapMic) {
+            ZStack {
+                switch status {
+                case .recording:
+                    Image(systemName: "stop.fill").foregroundStyle(.white)
+                case .opening, .transcribing:
+                    ProgressView().controlSize(.small)
+                case .ready:
+                    Image(systemName: "text.insert").foregroundStyle(.white)
+                default:
+                    Image(systemName: "mic.fill").foregroundStyle(.primary)
+                }
+            }
+            .font(.system(size: 14, weight: .semibold))
+            .frame(width: 36, height: 30)
+            .background(Capsule().fill(micFill(status)))
+        }
+        .buttonStyle(.plain)
+        .disabled(busy)
+        .accessibilityLabel("Ovozdan matn")
+    }
+
+    private func micFill(_ status: VoiceStatus) -> Color {
+        switch status {
+        case .recording: .red
+        case .ready: .accentColor
+        default: KeyboardColors.key
+        }
+    }
+
+    @ViewBuilder
+    private var voiceStatusView: some View {
+        switch model.voiceStatus {
+        case .opening:
+            Text("Ilova ochilmoqda…").font(.system(size: 13)).foregroundStyle(.secondary)
+        case .openFailed:
+            Text("Ilova ochilmadi — AI Keyboard ilovasini oching → Gapirish")
+                .font(.system(size: 12)).foregroundStyle(.orange).lineLimit(2)
+        case .recording:
+            Text("🔴 Yozilmoqda — tugagach ⏹ ni bosing").font(.system(size: 13, weight: .medium)).lineLimit(2)
+        case .transcribing:
+            Text("Matn yozilmoqda…").font(.system(size: 13)).foregroundStyle(.secondary)
+        case .ready:
+            Text("🎤 Ovozli matn tayyor — qo'yish").font(.system(size: 13, weight: .medium)).lineLimit(2)
+        case .failed(let message):
+            Text(message).font(.system(size: 12)).foregroundStyle(.red).lineLimit(2)
+        case .idle:
+            EmptyView()
+        }
     }
 
     /// Opens every reply in full — a chip shows two lines of it.

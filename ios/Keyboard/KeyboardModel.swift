@@ -25,6 +25,8 @@ final class KeyboardModel {
     var showsVariantList = false
     /// The reply the list scrolls to when it opens (long press on a chip); nil — the top.
     var variantListFocus: Suggestion.ID?
+    /// Voice dictation: when 🎤 was tapped and the app has not started recording yet (see `VoiceStatus`).
+    var voiceOpeningSince: Date?
     var hasFullAccess = false
     var showsGlobe = false
     /// The friend/language chip row, opened from the collapsed "✨ → English ⌄" pill.
@@ -37,6 +39,16 @@ final class KeyboardModel {
     var expiryNote: String?
 
     @ObservationIgnored weak var controller: UIInputViewController?
+    /// Opens a URL in the app; set by the view controller (an extension cannot use `UIApplication.shared`).
+    @ObservationIgnored var openApp: ((URL) -> Void)?
+    /// The voice session this keyboard asked the app for; its result is inserted without asking. Kept in the
+    /// extension's own defaults: iOS often ends a keyboard's process while the app is in front, and the id has to
+    /// outlive that for the text to land by itself when the user comes back.
+    var pendingVoiceID: String? {
+        get { UserDefaults.standard.string(forKey: "pendingVoiceID") }
+        set { UserDefaults.standard.set(newValue, forKey: "pendingVoiceID") }
+    }
+    @ObservationIgnored private var voiceOpenTask: Task<Void, Never>?
     /// Set while the Diagnostika switch records this appearance; `KeysUIView` writes touches into its journal.
     @ObservationIgnored var diagnostics: KeyboardDiagnostics?
 
@@ -65,6 +77,9 @@ final class KeyboardModel {
     /// Read against `now`, like `context`, so a timed-out spinner or an old error goes away on its own.
     var isAnalyzing: Bool { state.isAnalyzing(at: now) }
     var recentError: String? { state.recentError(at: now) }
+    var voiceStatus: VoiceStatus {
+        VoiceStatus.of(voice: state.voice, pendingID: pendingVoiceID, openingSince: voiceOpeningSince, now: now)
+    }
     var chips: [Suggestion] { variants.isEmpty ? (context?.suggestions ?? []) : variants }
 
     /// The chip row costs ~62pt of the chat above the keyboard; show it only when it has something in it.
@@ -93,6 +108,7 @@ final class KeyboardModel {
         closeVariantListIfEmpty()
         // Suggestions take over the row once a screenshot lands.
         if context != nil, showsTargetPicker { showsTargetPicker = false }
+        reconcileVoice()
         scheduleRefresh()
     }
 
@@ -122,6 +138,60 @@ final class KeyboardModel {
         showsDetails.toggle()
     }
 
+    // MARK: Voice
+
+    /// 🎤: starts a session, stops the running one or puts a waiting result in.
+    func tapMic() {
+        guard hasFullAccess else {
+            flash("🎤 uchun Settings'da AI Keyboard → Allow Full Access'ni yoqing")
+            return
+        }
+        switch voiceStatus {
+        case .recording:
+            keyDown()
+            DarwinNotification.post(AppGroup.voiceStopRequested)
+        case .transcribing, .opening:
+            break
+        case .ready(let text):
+            insertVoiceText(text)
+        case .idle, .openFailed, .failed:
+            startVoice()
+        }
+    }
+
+    private func startVoice() {
+        keyDown()
+        let id = UUID().uuidString
+        pendingVoiceID = id
+        voiceOpeningSince = Date()
+        openApp?(VoiceLink.url(id: id))
+        // After the wait the status turns into "the app did not open"; nothing else would move `now` then.
+        voiceOpenTask?.cancel()
+        voiceOpenTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(VoiceStatus.openingTimeout + 0.2))
+            guard !Task.isCancelled, let self else { return }
+            now = Date()
+        }
+    }
+
+    /// Called whenever the shared state or the time moves: the app answered, or our own session finished.
+    func reconcileVoice() {
+        if voiceOpeningSince != nil, state.activeVoice(at: now) != nil { voiceOpeningSince = nil }
+        if case .insert(let text) = VoiceInsertion.decision(voice: state.voice, pendingID: pendingVoiceID, now: now) {
+            insertVoiceText(text)
+        }
+    }
+
+    private func insertVoiceText(_ text: String) {
+        proxy?.insertText(VoiceInsertion.prepared(text, before: proxy?.documentContextBeforeInput))
+        pendingVoiceID = nil
+        if voiceOpeningSince != nil { voiceOpeningSince = nil }
+        // Consumed: the next session starts clean, and a second keyboard does not offer it again.
+        SharedStore.update { $0.voice = nil }
+        reloadState()
+        autoCapitalize()
+    }
+
     /// The spinner, the error line and the context expire by time alone, and nothing else re-renders the bar
     /// when they do — a stuck `analyzingSince` kept the spinner turning at the display's refresh rate. Sleep
     /// until the next deadline instead of polling, then move `now`.
@@ -133,6 +203,7 @@ final class KeyboardModel {
             guard !Task.isCancelled, let self else { return }
             now = Date()
             closeVariantListIfEmpty()
+            reconcileVoice()
             scheduleRefresh()
         }
     }
@@ -140,6 +211,8 @@ final class KeyboardModel {
     func stopRefresh() {
         refreshTask?.cancel()
         refreshTask = nil
+        voiceOpenTask?.cancel()
+        voiceOpenTask = nil
     }
 
     func toggleTargetPicker() {
