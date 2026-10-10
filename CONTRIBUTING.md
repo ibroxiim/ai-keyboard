@@ -67,6 +67,9 @@ Klaviatura kengaytmasini sinashning o'z cheklovlari bor:
 - **Diagnostika**: ilovada Diagnostika → yoqing. Klaviatura har ochilishida qisqa hisobot yozadi (teginishlar,
   yo'qolganlari, kechikish, CPU, harorat — yozilgan matn saqlanmaydi). «Yozish testi» harf yo'qolishini tekshiradi.
   Instruments'ning Points of Interest trekida tugma, ✨ va Back Tap bosqichlari ko'rinadi.
+- **Ovozdan matn** (o'zbekcha, Gemini orqali): klaviaturadagi 🎤 ilovani ochadi, ilova yozib oladi, ⏹ dan keyin
+  matn kursor joyiga tushadi. Mikrofon va fon yozish faqat haqiqiy telefonda to'liq sinaladi; Simulator'da ilovadagi
+  "Gapirish" ekrani Mac mikrofoni bilan ishlaydi.
 - Issue va PR'larga **haqiqiy DM skrinshotlarini qo'ymang** — boshqa odamlarning xabarlari. Ismlar va matnni yashiring
   yoki soxta suhbat ishlating.
 
