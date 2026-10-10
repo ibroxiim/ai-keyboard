@@ -26,6 +26,11 @@ targets:
         CFBundleDisplayName: AI Keyboard
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSMicrophoneUsageDescription: "Gapirganingizni o'zbekcha matnga aylantirish uchun mikrofon kerak."
+        UIBackgroundModes: [audio]
+        CFBundleURLTypes:
+          - CFBundleURLName: com.ibrokhim.dmtranslator
+            CFBundleURLSchemes: [aikeyboard]
     entitlements:
       path: App/Tarjimon.entitlements
       properties:

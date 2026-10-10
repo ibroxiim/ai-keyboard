@@ -25,6 +25,7 @@ final class SharedStateModel: ObservableObject {
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var store = SharedStateModel()
+    @EnvironmentObject private var voice: VoiceController
     @State private var pickerItem: PhotosPickerItem?
     @State private var isAnalyzing = false
     @State private var errorText: String?
@@ -47,6 +48,7 @@ struct ContentView: View {
                 signingSection
                 setupSection
                 testSection
+                voiceSection
                 languageSection
                 keyboardSection
                 diagnosticsSection
@@ -54,6 +56,9 @@ struct ContentView: View {
                 contextSection
             }
             .navigationTitle("AI Keyboard")
+        }
+        .sheet(isPresented: $voice.showsScreen) {
+            VoiceScreen().environmentObject(voice)
         }
         .task { await refreshExpiryReminders() }
         .onChange(of: scenePhase) { _, phase in
@@ -184,6 +189,18 @@ struct ContentView: View {
             }
         }
         .padding(.vertical, 2)
+    }
+
+    // MARK: Voice
+
+    private var voiceSection: some View {
+        Section {
+            Button { voice.startManually() } label: {
+                Label("Gapirish (o'zbekcha → matn)", systemImage: "mic.fill")
+            }
+        } footer: {
+            Text("Klaviaturadagi 🎤 ham shu ekranni ochadi. Gapirasiz, matn maydonga tushadi.")
+        }
     }
 
     // MARK: Test
