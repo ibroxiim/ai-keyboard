@@ -42,6 +42,15 @@ enum Translator {
         return (ChatAnalysis(quick: quick, details: details), quickError ?? detailsError)
     }
 
+    /// A voice message from an Uzbek speaker → what was said, in Latin script. Throws `VoiceError.noSpeech` when the
+    /// model heard none.
+    static func transcribe(audio: Data, mimeType: String = "audio/mp4") async throws -> String {
+        let result = try await Gemini.generate(
+            VoiceTranscript.Result.self, system: Prompts.transcribeSystem,
+            parts: [.audio(audio, mimeType: mimeType)], schema: Prompts.transcribeSchema)
+        return try VoiceTranscript.text(from: result)
+    }
+
     static func rewrite(
         draft: String, context: ChatAnalysis?, friend: Friend?, language: String
     ) async throws -> [Suggestion] {
@@ -79,6 +88,22 @@ enum Prompts {
     - transcript: the last up to 6 messages in order, verbatim, each {from: "me"|"them", text}.
     - suggestions: exactly 3 replies the user could send next, written in the conversation language, matching the tone (length, casing, emoji use). Make them meaningfully different (e.g. positive / asks a question / polite decline or alternative). Each {text, uz} where uz is the Uzbek meaning.
     """
+
+    static let transcribeSystem = """
+    You transcribe a short voice message from an Uzbek speaker who is chatting with a friend.
+    Write exactly what was said, in Uzbek Latin script (use ' for oʻ/gʻ), with natural punctuation.
+    Keep words in other languages (English, Russian) as spoken. Do not translate, summarize, correct or add anything.
+    If there is no speech, return an empty string.
+
+    Return JSON:
+    - text: the transcript.
+    """
+
+    static let transcribeSchema: [String: Any] = [
+        "type": "object",
+        "properties": ["text": ["type": "string"]],
+        "required": ["text"],
+    ]
 
     static let rewriteSystem = """
     You turn an Uzbek speaker's draft into a DM reply they can send.
