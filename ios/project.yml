@@ -88,6 +88,7 @@ targets:
       - Shared/VoiceInsertion.swift
       - Shared/GeminiPart.swift
       - Shared/VoiceTranscript.swift
+      - App/VoiceController.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ibrokhim.dmtranslator.tests
