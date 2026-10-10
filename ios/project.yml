@@ -84,6 +84,7 @@ targets:
       - Shared/GeminiError.swift
       - Shared/Hedge.swift
       - Shared/ProvisioningExpiry.swift
+      - Shared/VoiceState.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ibrokhim.dmtranslator.tests

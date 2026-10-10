@@ -4,6 +4,8 @@ enum AppGroup {
     static let id = "group.com.ibrokhim.dmtranslator"
     /// Darwin notification: the app (Back Tap intent) changed the state, the keyboard should reload.
     static let stateChanged = "com.ibrokhim.dmtranslator.stateChanged"
+    /// Darwin notification: the keyboard's ⏹ asks the app to stop recording and transcribe.
+    static let voiceStopRequested = "com.ibrokhim.dmtranslator.voiceStopRequested"
     /// Darwin notification: the keyboard appended a diagnostics session to `diagnostics.json`.
     static let diagnosticsChanged = "com.ibrokhim.dmtranslator.diagnosticsChanged"
     /// Debug builds only: `tools/simulate-back-tap.sh` stands in for Back Tap in the Simulator.
@@ -31,6 +33,8 @@ struct SharedState: Codable, Equatable {
     var emojiKey: Bool?
     /// App setting (Diagnostika): the keyboard records a session summary per appearance.
     var diagnosticsEnabled: Bool?
+    /// Voice dictation: written by the app as it records and transcribes, read by the keyboard.
+    var voice: VoiceState?
 }
 
 struct Friend: Codable, Hashable, Identifiable {
@@ -144,10 +148,17 @@ extension SharedState {
             analyzingSince.map { $0 + SharedStore.analysisTimeout },
             lastErrorDate.map { $0 + SharedStore.errorLifetime },
             contextDate.map { $0 + SharedStore.contextLifetime },
+            voice?.expiry,
         ]
         .compactMap { $0 }
         .filter { $0 > now }
         .min()
+    }
+
+    /// The voice session while it is still believed; a dead one (app killed mid-way) shows as none.
+    func activeVoice(at now: Date) -> VoiceState? {
+        guard let voice, voice.isLive(at: now) else { return nil }
+        return voice
     }
 
     var language: String { freshContext?.language ?? targetLanguage ?? "English" }
