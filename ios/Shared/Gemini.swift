@@ -3,22 +3,8 @@ import Foundation
 enum Gemini {
     typealias Part = GeminiPart
 
-    /// Raced by `Hedge`, in this order. Which one is up changes day to day: on 2026-09-28 3.5-flash-lite took
-    /// 14–27 s and 3.6-flash answered in 2–4 s; on 2026-09-29 3.6-flash returned 503 and lite answered in 2–3 s.
-    /// All of them take `thinkingLevel: minimal` (3.7/3.8-flash do not).
-    static let models = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-3.5-flash"]
-
-    /// Per attempt.
-    static let attemptTimeout: TimeInterval = 20
-
-    /// How long a model may stay quiet before the next one is started alongside it. A screenshot or a voice
-    /// message takes longer to read than a rewrite, so it gets more time before paying for a second request.
-    static func hedgeDelay(for parts: [Part]) -> Duration {
-        parts.contains(where: \.isMedia) ? .seconds(6) : .seconds(4)
-    }
-
     static func generate<T: Decodable>(
-        _ type: T.Type, system: String, parts: [Part], schema: [String: Any]
+        _ type: T.Type, system: String, parts: [Part], schema: [String: Any], quality: GeminiQuality = .fast
     ) async throws -> T {
         guard !Secrets.geminiAPIKey.isEmpty else { throw GeminiError.missingKey }
         let body: [String: Any] = [
@@ -27,22 +13,23 @@ enum Gemini {
             "generationConfig": [
                 "responseMimeType": "application/json",
                 "responseSchema": schema,
-                "thinkingConfig": ["thinkingLevel": "minimal"],
+                "thinkingConfig": ["thinkingLevel": quality.thinkingLevel],
             ],
         ]
         let payload = try JSONSerialization.data(withJSONObject: body)
 
         return try await Hedge.first(
-            models, after: hedgeDelay(for: parts), isRetriable: GeminiError.triesNextModel(after:)
+            quality.models, after: quality.hedgeDelay(media: parts.contains(where: \.isMedia)),
+            isRetriable: GeminiError.triesNextModel(after:)
         ) { model in
-            let text = try await call(model: model, payload: payload)
+            let text = try await call(model: model, payload: payload, timeout: quality.attemptTimeout)
             return try JSONDecoder().decode(T.self, from: Data(text.utf8))
         }
     }
 
-    private static func call(model: String, payload: Data) async throws -> String {
+    private static func call(model: String, payload: Data, timeout: TimeInterval) async throws -> String {
         let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent")!
-        var request = URLRequest(url: url, timeoutInterval: attemptTimeout)
+        var request = URLRequest(url: url, timeoutInterval: timeout)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(Secrets.geminiAPIKey, forHTTPHeaderField: "x-goog-api-key")

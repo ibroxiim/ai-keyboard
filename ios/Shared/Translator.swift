@@ -8,12 +8,14 @@ enum Translator {
     /// `knownFriends` lets the model map a cut-off or misread name ("Christi...", "Christima") onto the
     /// friend it already knows, so each screenshot does not create a new friend card.
     static func analyze(
-        jpeg: Data, knownFriends: [String], style: String?, onQuickRead: @escaping (QuickRead) -> Void
+        jpeg: Data, knownFriends: [String], style: String?, quality: GeminiQuality = .fast,
+        onQuickRead: @escaping (QuickRead) -> Void
     ) async throws -> (analysis: ChatAnalysis, partialError: Error?) {
         let detailsTask = Task {
             try await Signposts.measureAsync("details") {
                 try await Gemini.generate(
-                    ChatDetails.self, system: Prompts.detailsSystem, parts: [.jpeg(jpeg)], schema: Prompts.detailsSchema)
+                    ChatDetails.self, system: Prompts.detailsSystem, parts: [.jpeg(jpeg)], schema: Prompts.detailsSchema,
+                    quality: quality)
             }
         }
         var quickParts: [Gemini.Part] = [.jpeg(jpeg)]
@@ -25,7 +27,8 @@ enum Translator {
         do {
             quick = try await Signposts.measureAsync("quickRead") {
                 try await Gemini.generate(
-                    QuickRead.self, system: Prompts.quickSystem(style: style), parts: quickParts, schema: Prompts.quickSchema)
+                    QuickRead.self, system: Prompts.quickSystem(style: style), parts: quickParts, schema: Prompts.quickSchema,
+                    quality: quality)
             }
             onQuickRead(quick!)
         } catch {
@@ -53,14 +56,14 @@ enum Translator {
 
     static func rewrite(
         draft: String, context: ChatAnalysis?, friend: Friend?, language: String,
-        formality: Friend.Formality?, history: [ChatAnalysis.Line], style: String?
+        formality: Friend.Formality?, history: [ChatAnalysis.Line], style: String?, quality: GeminiQuality = .fast
     ) async throws -> [Suggestion] {
         let input = Prompts.rewriteInput(
             draft: draft, context: context, friend: friend, language: language, formality: formality,
             history: history)
         let result = try await Gemini.generate(
             RewriteResult.self, system: Prompts.rewriteSystem(style: style), parts: [.text(input)],
-            schema: Prompts.rewriteSchema)
+            schema: Prompts.rewriteSchema, quality: quality)
         return result.variants
     }
 

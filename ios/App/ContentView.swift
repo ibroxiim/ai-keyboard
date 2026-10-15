@@ -285,8 +285,14 @@ struct ContentView: View {
             )) {
                 Label("Suhbat xotirasi", systemImage: "clock.arrow.circlepath")
             }
+            Toggle(isOn: Binding(
+                get: { state.qualityMode ?? false },
+                set: { on in store.update { $0.qualityMode = on } }
+            )) {
+                Label("Sifatli tarjima (sekinroq)", systemImage: "wand.and.stars")
+            }
         } footer: {
-            Text("Skrinshotlardagi xabarlar faqat shu telefonda saqlanadi va ✨ ga shu do'st bilan suhbat konteksti bo'ladi. O'chirsangiz, saqlanganlari ham o'chadi.")
+            Text("Xotira: skrinshotlardagi xabarlar faqat shu telefonda saqlanadi va ✨ ga shu do'st bilan suhbat konteksti bo'ladi; o'chirsangiz, saqlanganlari ham o'chadi.\n\nSifatli tarjima: kuchliroq modellar va ko'proq fikrlash, tarjima bir necha soniya sekinroq. Tajribaviy — sifatini o'zingiz solishtirib ko'ring.")
         }
     }
 
