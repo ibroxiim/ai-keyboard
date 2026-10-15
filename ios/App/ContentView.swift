@@ -238,9 +238,18 @@ struct ContentView: View {
                 get: { state.targetLanguage ?? "English" },
                 set: { language in store.update { $0.targetLanguage = language; $0.activeFriend = nil } }
             )) {
-                let options = Languages.common.contains(state.targetLanguage ?? "English")
-                    ? Languages.common : Languages.common + [state.targetLanguage ?? "English"]
+                let current = state.targetLanguage ?? "English"
+                let options = state.languageList.contains(current) ? state.languageList : state.languageList + [current]
                 ForEach(options, id: \.self) { Text("\(Languages.flag($0)) \($0)") }
+            }
+            NavigationLink {
+                LanguagesView(store: store)
+            } label: {
+                HStack {
+                    Label("Klaviatura tillari", systemImage: "globe")
+                    Spacer()
+                    Text("\(state.languageList.count) ta").foregroundStyle(.secondary)
+                }
             }
         } footer: {
             Text("O'zi almashadi: skrinshotdan keyin — suhbat tiliga. Klaviaturada do'stingiz nomini bossangiz — uning tiliga.")

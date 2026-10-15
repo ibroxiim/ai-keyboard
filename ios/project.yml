@@ -80,6 +80,7 @@ targets:
     sources:
       - Tests
       - Shared/SharedStore.swift
+      - Shared/Languages.swift
       - Shared/Models.swift
       - Shared/TouchOutcome.swift
       - Keyboard/TouchTracker.swift

@@ -85,9 +85,9 @@ final class KeyboardModel {
     /// The chip row costs ~62pt of the chat above the keyboard; show it only when it has something in it.
     var barExpanded: Bool { !chips.isEmpty || isAnalyzing || showsTargetPicker }
 
-    /// Without a fresh screenshot the chip row picks who we are writing to: recent friends first, then plain languages.
+    /// Without a fresh screenshot the chip row picks who we are writing to: recent friends first, then the languages the user picked in the app.
     var targets: [Target] {
-        (state.friends ?? []).prefix(5).map(Target.friend) + Languages.common.map(Target.language)
+        (state.friends ?? []).prefix(5).map(Target.friend) + state.languageList.map(Target.language)
     }
 
     func isSelected(_ target: Target) -> Bool {

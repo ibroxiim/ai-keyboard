@@ -35,6 +35,8 @@ struct SharedState: Codable, Equatable {
     var diagnosticsEnabled: Bool?
     /// Voice dictation: written by the app as it records and transcribes, read by the keyboard.
     var voice: VoiceState?
+    /// App setting: the languages in the keyboard's chip row, in order. Nil until edited — then `Languages.defaults`.
+    var languages: [String]?
 }
 
 struct Friend: Codable, Hashable, Identifiable {
@@ -163,6 +165,8 @@ extension SharedState {
 
     var language: String { freshContext?.language ?? targetLanguage ?? "English" }
 
+    var languageList: [String] { languages ?? Languages.defaults }
+
     /// The friend whose tone ✨ uses when there is no fresh context.
     var activeFriendProfile: Friend? {
         guard freshContext == nil, let activeFriend else { return nil }
@@ -202,35 +206,6 @@ extension SharedState {
         friends = merged
         if let active = activeFriend, let match = merged.first(where: { Friend.isSamePerson($0.name, active) }) {
             activeFriend = match.name
-        }
-    }
-}
-
-enum Languages {
-    static let common = [
-        "English", "Korean", "Russian", "Turkish", "Japanese", "Chinese",
-        "Arabic", "German", "Spanish", "French",
-    ]
-
-    static func flag(_ language: String) -> String {
-        switch language.lowercased() {
-        case "english": "🇬🇧"
-        case "korean": "🇰🇷"
-        case "russian": "🇷🇺"
-        case "turkish": "🇹🇷"
-        case "japanese": "🇯🇵"
-        case "chinese": "🇨🇳"
-        case "arabic": "🇸🇦"
-        case "german": "🇩🇪"
-        case "spanish": "🇪🇸"
-        case "french": "🇫🇷"
-        case "italian": "🇮🇹"
-        case "portuguese": "🇵🇹"
-        case "hindi": "🇮🇳"
-        case "indonesian": "🇮🇩"
-        case "kazakh": "🇰🇿"
-        case "uzbek": "🇺🇿"
-        default: "🌐"
         }
     }
 }
