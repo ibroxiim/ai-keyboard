@@ -370,11 +370,15 @@ final class KeyboardModel {
         let context = context
         let friend = state.activeFriendProfile
         let language = state.language
+        let formality = state.chosenFormality
+        let style = state.translationStyle
         rewriteTask = Task {
             defer { isRewriting = false }
             do {
                 let result = try await Signposts.measureAsync("rewrite") {
-                    try await Translator.rewrite(draft: draft, context: context, friend: friend, language: language)
+                    try await Translator.rewrite(
+                        draft: draft, context: context, friend: friend, language: language,
+                        formality: formality, style: style)
                 }
                 guard !Task.isCancelled else { return }
                 variants = result

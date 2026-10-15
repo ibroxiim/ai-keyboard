@@ -81,6 +81,7 @@ targets:
       - Tests
       - Shared/SharedStore.swift
       - Shared/Languages.swift
+      - Shared/Prompts.swift
       - Shared/Models.swift
       - Shared/TouchOutcome.swift
       - Keyboard/TouchTracker.swift

@@ -30,7 +30,9 @@ struct ContentView: View {
     @State private var isAnalyzing = false
     @State private var errorText: String?
     @State private var testText = ""
+    @State private var styleText = ""
     @FocusState private var testFieldFocused: Bool
+    @FocusState private var styleFocused: Bool
     @State private var notificationsAllowed = true
 
     private var state: SharedState { store.state }
@@ -50,20 +52,24 @@ struct ContentView: View {
                 testSection
                 voiceSection
                 languageSection
+                translationSection
                 keyboardSection
                 diagnosticsSection
                 friendsSection
                 contextSection
             }
             .navigationTitle("AI Keyboard")
+            .scrollDismissesKeyboard(.interactively)
         }
         .sheet(isPresented: $voice.showsScreen) {
             VoiceScreen().environmentObject(voice)
         }
         .task { await refreshExpiryReminders() }
         .onChange(of: scenePhase) { _, phase in
+            if phase != .active { saveStyle() }
             guard phase == .active else { return }
             store.reload()
+            styleText = state.translationStyle ?? ""
             Task { await refreshExpiryReminders() }
         }
         .onChange(of: pickerItem) { _, item in
@@ -256,6 +262,26 @@ struct ContentView: View {
         }
     }
 
+    private var translationSection: some View {
+        Section {
+            TextField("Masalan: oddiy, do'stona, ko'cha tilida yoz; rasmiy bo'lma", text: $styleText, axis: .vertical)
+                .lineLimit(2...6)
+                .focused($styleFocused)
+                .onAppear { styleText = state.translationStyle ?? "" }
+                .onChange(of: styleFocused) { _, focused in if !focused { saveStyle() } }
+        } header: {
+            Text("Tarjima uslubi")
+        } footer: {
+            Text("Gemini'dagi tarjima sessiyangizga bergan ko'rsatmani shu yerga qo'ying. U har tarjimaga va ✨ ga qo'shiladi (\(Prompts.styleLimit) belgigacha).")
+        }
+    }
+
+    private func saveStyle() {
+        let text = String(styleText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Prompts.styleLimit))
+        guard text != (state.translationStyle ?? "") else { return }
+        store.update { $0.translationStyle = text.isEmpty ? nil : text }
+    }
+
     private var keyboardSection: some View {
         Section {
             Toggle(isOn: Binding(
@@ -293,6 +319,7 @@ struct ContentView: View {
                             Text("\(friend.language) · \(friend.tone)").font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()
+                        formalityMenu(for: friend)
                         if state.activeFriend == friend.name {
                             Image(systemName: "checkmark").foregroundStyle(Color.accentColor)
                         }
@@ -308,8 +335,31 @@ struct ContentView: View {
             } header: {
                 Text("Do'stlar")
             } footer: {
-                Text("Har skrinshotdan keyin eslab qolinadi. Klaviaturada ularni bir bosishda tanlaysiz.")
+                Text("Har skrinshotdan keyin eslab qolinadi. Klaviaturada ularni bir bosishda tanlaysiz. O'ng tomondagi tanlov ✨ ularga qanchalik rasmiy yozishini belgilaydi.")
             }
+        }
+    }
+
+    /// Lets the user decide how formal ✨ writes to a friend; "Avto" leaves it to the model.
+    private func formalityMenu(for friend: Friend) -> some View {
+        Menu {
+            Picker("Muloqot darajasi", selection: Binding<Friend.Formality?>(
+                get: { friend.formality },
+                set: { value in
+                    store.update { state in
+                        guard let index = state.friends?.firstIndex(where: { $0.name == friend.name }) else { return }
+                        state.friends?[index].formality = value
+                    }
+                }
+            )) {
+                Text("Avto").tag(Friend.Formality?.none)
+                Text("Norasmiy (sen)").tag(Friend.Formality?.some(.informal))
+                Text("Rasmiy (siz)").tag(Friend.Formality?.some(.formal))
+            }
+        } label: {
+            Text(friend.formality.map { $0 == .informal ? "Norasmiy" : "Rasmiy" } ?? "Avto")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 

@@ -37,13 +37,25 @@ struct SharedState: Codable, Equatable {
     var voice: VoiceState?
     /// App setting: the languages in the keyboard's chip row, in order. Nil until edited — then `Languages.defaults`.
     var languages: [String]?
+    /// App setting: the user's own instructions for how to translate, added to every translation prompt.
+    var translationStyle: String?
+    /// App setting: slower models with more thinking for translations (see `Gemini.Quality`). Off when nil.
+    var qualityMode: Bool?
+    /// App setting: keep what each friend wrote, from past screenshots, for ✨. On when nil.
+    var rememberChats: Bool?
 }
 
 struct Friend: Codable, Hashable, Identifiable {
+    /// How formal ✨ writes to this friend when the user decided it, instead of the model guessing from the chat.
+    enum Formality: String, Codable, CaseIterable {
+        case informal, formal
+    }
+
     var name: String
     var language: String
     var tone: String
     var lastSeen: Date
+    var formality: Formality?
     var id: String { name }
 
     /// The model reads the name off each screenshot, so the same person comes back as "Christi..."
@@ -173,6 +185,12 @@ extension SharedState {
         return friends?.first { $0.name == activeFriend }
     }
 
+    /// The formality the user picked for the friend ✨ is writing to — with or without a fresh screenshot.
+    var chosenFormality: Friend.Formality? {
+        guard let activeFriend else { return nil }
+        return friends?.first { $0.name == activeFriend }?.formality
+    }
+
     mutating func remember(_ analysis: ChatAnalysis) {
         // Empty when the quick half failed — keep what we knew.
         guard !analysis.language.isEmpty else { return }
@@ -185,7 +203,11 @@ extension SharedState {
         let same = list.filter { Friend.isSamePerson($0.name, analysis.partner) }
         let name = Friend.bestName([analysis.partner] + same.map(\.name))
         list.removeAll { Friend.isSamePerson($0.name, analysis.partner) }
-        list.insert(Friend(name: name, language: analysis.language, tone: analysis.tone, lastSeen: Date()), at: 0)
+        list.insert(
+            Friend(
+                name: name, language: analysis.language, tone: analysis.tone, lastSeen: Date(),
+                formality: same.compactMap(\.formality).first),
+            at: 0)
         friends = Array(list.prefix(8))
         activeFriend = name
     }
@@ -198,6 +220,7 @@ extension SharedState {
         for friend in list {
             if let index = merged.firstIndex(where: { Friend.isSamePerson($0.name, friend.name) }) {
                 merged[index].name = Friend.bestName([merged[index].name, friend.name])
+                merged[index].formality = merged[index].formality ?? friend.formality
             } else {
                 merged.append(friend)
             }

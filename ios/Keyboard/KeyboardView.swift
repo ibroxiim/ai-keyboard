@@ -187,7 +187,9 @@ struct SuggestionBar: View {
     }
 
     private func contextLine(_ context: ChatAnalysis) -> String {
-        let meaning = context.lastIncomingUz.isEmpty ? context.summaryUz : context.lastIncomingUz
+        // Several unanswered messages come back one per line; the bar has a single line.
+        let meaning = (context.lastIncomingUz.isEmpty ? context.summaryUz : context.lastIncomingUz)
+            .split(whereSeparator: \.isNewline).joined(separator: " · ")
         return "💬 " + (context.partner.isEmpty ? meaning : "\(context.partner): \(meaning)")
     }
 
