@@ -73,20 +73,32 @@ enum Prompts {
         """ + styleBlock(style)
     }
 
+    /// Messages of the remembered chat that go to the model with a rewrite.
+    static let historyLimit = 20
+
     static func rewriteInput(
-        draft: String, context: ChatAnalysis?, friend: Friend?, language: String, formality: Friend.Formality?
+        draft: String, context: ChatAnalysis?, friend: Friend?, language: String, formality: Friend.Formality?,
+        history: [ChatAnalysis.Line] = []
     ) -> String {
         var lines = ["Target language: \(language)"]
         if let formality { lines.append("Formality chosen by the user: \(formality.rawValue)") }
+        let remembered = history.suffix(historyLimit).map { "\($0.from): \($0.text)" }
         if let context {
             lines.append("Conversation tone: \(context.tone)")
             if !context.partner.isEmpty { lines.append("Partner: \(context.partner)") }
             lines.append("Recent messages:")
-            lines += context.transcript.map { "\($0.from): \($0.text)" }
+            // The remembered chat already contains this screenshot and what came before it.
+            lines += history.count > context.transcript.count
+                ? remembered : context.transcript.map { "\($0.from): \($0.text)" }
         } else if let friend {
             lines.append("Partner: \(friend.name)")
             lines.append("Conversation tone: \(friend.tone)")
-            lines.append("No recent messages available.")
+            if remembered.isEmpty {
+                lines.append("No recent messages available.")
+            } else {
+                lines.append("Earlier messages, from past screenshots (the chat may have moved on since):")
+                lines += remembered
+            }
         } else {
             lines.append("No conversation context. Write a friendly, casual DM.")
         }

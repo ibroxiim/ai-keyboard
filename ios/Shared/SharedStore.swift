@@ -56,6 +56,9 @@ struct Friend: Codable, Hashable, Identifiable {
     var tone: String
     var lastSeen: Date
     var formality: Formality?
+    /// What was said in this chat, collected from screenshots (see `ChatHistory`); nil when the user turned chat
+    /// memory off. Stays on the device; only ✨ sends it, and only for this friend.
+    var history: [ChatAnalysis.Line]?
     var id: String { name }
 
     /// The model reads the name off each screenshot, so the same person comes back as "Christi..."
@@ -185,10 +188,25 @@ extension SharedState {
         return friends?.first { $0.name == activeFriend }
     }
 
-    /// The formality the user picked for the friend ✨ is writing to — with or without a fresh screenshot.
-    var chosenFormality: Friend.Formality? {
+    /// The friend ✨ is writing to — with or without a fresh screenshot (`activeFriendProfile` is only for the latter).
+    var activeFriendRecord: Friend? {
         guard let activeFriend else { return nil }
-        return friends?.first { $0.name == activeFriend }?.formality
+        return friends?.first { $0.name == activeFriend }
+    }
+
+    /// The formality the user picked for that friend.
+    var chosenFormality: Friend.Formality? { activeFriendRecord?.formality }
+
+    /// What the active friend wrote and was written, for ✨; nothing while chat memory is off.
+    var rememberedMessages: [ChatAnalysis.Line] {
+        rememberChats == false ? [] : activeFriendRecord?.history ?? []
+    }
+
+    /// Turning memory off also forgets what was already saved.
+    mutating func setRememberChats(_ on: Bool) {
+        rememberChats = on
+        guard !on, friends != nil else { return }
+        for index in friends!.indices { friends![index].history = nil }
     }
 
     mutating func remember(_ analysis: ChatAnalysis) {
@@ -203,10 +221,12 @@ extension SharedState {
         let same = list.filter { Friend.isSamePerson($0.name, analysis.partner) }
         let name = Friend.bestName([analysis.partner] + same.map(\.name))
         list.removeAll { Friend.isSamePerson($0.name, analysis.partner) }
+        let history = rememberChats == false
+            ? nil : ChatHistory.merged(same.compactMap(\.history).first ?? [], with: analysis.transcript)
         list.insert(
             Friend(
                 name: name, language: analysis.language, tone: analysis.tone, lastSeen: Date(),
-                formality: same.compactMap(\.formality).first),
+                formality: same.compactMap(\.formality).first, history: history),
             at: 0)
         friends = Array(list.prefix(8))
         activeFriend = name
@@ -221,6 +241,7 @@ extension SharedState {
             if let index = merged.firstIndex(where: { Friend.isSamePerson($0.name, friend.name) }) {
                 merged[index].name = Friend.bestName([merged[index].name, friend.name])
                 merged[index].formality = merged[index].formality ?? friend.formality
+                merged[index].history = merged[index].history ?? friend.history
             } else {
                 merged.append(friend)
             }

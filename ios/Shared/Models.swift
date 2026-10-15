@@ -10,7 +10,7 @@ struct Suggestion: Codable, Hashable, Identifiable {
 /// What the model read from a DM screenshot. Built from two parallel Gemini calls
 /// (`QuickRead` + `ChatDetails`); either half may be missing while it is in flight or if it failed.
 struct ChatAnalysis: Codable, Equatable {
-    struct Line: Codable, Equatable {
+    struct Line: Codable, Hashable {
         var from: String // "me" | "them"
         var text: String
     }

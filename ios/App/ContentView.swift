@@ -53,6 +53,7 @@ struct ContentView: View {
                 voiceSection
                 languageSection
                 translationSection
+                translationOptionsSection
                 keyboardSection
                 diagnosticsSection
                 friendsSection
@@ -276,6 +277,19 @@ struct ContentView: View {
         }
     }
 
+    private var translationOptionsSection: some View {
+        Section {
+            Toggle(isOn: Binding(
+                get: { state.rememberChats ?? true },
+                set: { on in store.update { $0.setRememberChats(on) } }
+            )) {
+                Label("Suhbat xotirasi", systemImage: "clock.arrow.circlepath")
+            }
+        } footer: {
+            Text("Skrinshotlardagi xabarlar faqat shu telefonda saqlanadi va ✨ ga shu do'st bilan suhbat konteksti bo'ladi. O'chirsangiz, saqlanganlari ham o'chadi.")
+        }
+    }
+
     private func saveStyle() {
         let text = String(styleText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Prompts.styleLimit))
         guard text != (state.translationStyle ?? "") else { return }
@@ -316,7 +330,7 @@ struct ContentView: View {
                         Text(Languages.flag(friend.language))
                         VStack(alignment: .leading, spacing: 1) {
                             Text(friend.name)
-                            Text("\(friend.language) · \(friend.tone)").font(.caption).foregroundStyle(.secondary)
+                            Text(friendDetail(friend)).font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()
                         formalityMenu(for: friend)
@@ -338,6 +352,11 @@ struct ContentView: View {
                 Text("Har skrinshotdan keyin eslab qolinadi. Klaviaturada ularni bir bosishda tanlaysiz. O'ng tomondagi tanlov ✨ ularga qanchalik rasmiy yozishini belgilaydi.")
             }
         }
+    }
+
+    private func friendDetail(_ friend: Friend) -> String {
+        let remembered = friend.history?.count ?? 0
+        return "\(friend.language) · \(friend.tone)" + (remembered > 0 ? " · \(remembered) xabar xotirada" : "")
     }
 
     /// Lets the user decide how formal ✨ writes to a friend; "Avto" leaves it to the model.
