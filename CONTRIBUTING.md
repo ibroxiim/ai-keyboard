@@ -70,6 +70,9 @@ Klaviatura kengaytmasini sinashning o'z cheklovlari bor:
 - **Ovozdan matn** (o'zbekcha, Gemini orqali): klaviaturadagi 🎤 ilovani ochadi, ilova yozib oladi, ⏹ dan keyin
   matn kursor joyiga tushadi. Mikrofon va fon yozish faqat haqiqiy telefonda to'liq sinaladi; Simulator'da ilovadagi
   "Gapirish" ekrani Mac mikrofoni bilan ishlaydi.
+- **Prompt'lar** (`ios/Shared/Prompts.swift`) o'zgarsa, haqiqiy Gemini bilan kamida bitta **5–6 ta ketma-ket xabarli**
+  to'qima suhbatda sinang: har xabar alohida qatorda tarjima bo'lishi kerak. Matnli testlar prompt'ning asosiy
+  qoidalari o'chib ketmasligini tekshiradi, tarjima sifatini emas.
 - Issue va PR'larga **haqiqiy DM skrinshotlarini qo'ymang** — boshqa odamlarning xabarlari. Ismlar va matnni yashiring
   yoki soxta suhbat ishlating.
 
