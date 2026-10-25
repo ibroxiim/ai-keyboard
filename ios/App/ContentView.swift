@@ -30,9 +30,7 @@ struct ContentView: View {
     @State private var isAnalyzing = false
     @State private var errorText: String?
     @State private var testText = ""
-    @State private var styleText = ""
     @FocusState private var testFieldFocused: Bool
-    @FocusState private var styleFocused: Bool
     @State private var notificationsAllowed = true
 
     private var state: SharedState { store.state }
@@ -67,10 +65,8 @@ struct ContentView: View {
         }
         .task { await refreshExpiryReminders() }
         .onChange(of: scenePhase) { _, phase in
-            if phase != .active { saveStyle() }
             guard phase == .active else { return }
             store.reload()
-            styleText = state.translationStyle ?? ""
             Task { await refreshExpiryReminders() }
         }
         .onChange(of: pickerItem) { _, item in
@@ -265,15 +261,26 @@ struct ContentView: View {
 
     private var translationSection: some View {
         Section {
-            TextField("Masalan: oddiy, do'stona, ko'cha tilida yoz; rasmiy bo'lma", text: $styleText, axis: .vertical)
-                .lineLimit(2...6)
-                .focused($styleFocused)
-                .onAppear { styleText = state.translationStyle ?? "" }
-                .onChange(of: styleFocused) { _, focused in if !focused { saveStyle() } }
-        } header: {
-            Text("Tarjima uslubi")
+            NavigationLink {
+                InstructionsEditor(
+                    title: "Tarjima uslubi",
+                    placeholder: "Gemini sessiyangizga bergan ko'rsatma, yoki misollar:\n«hey stranger» → «ey yo'qolib ketgan odam»",
+                    initial: state.translationStyle ?? ""
+                ) { text in store.update { $0.translationStyle = text.isEmpty ? nil : text } }
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Label("Tarjima uslubi", systemImage: "text.quote")
+                        Spacer()
+                        Text(state.translationStyle.map { "\($0.count) belgi" } ?? "Yo'q").foregroundStyle(.secondary)
+                    }
+                    if let style = state.translationStyle {
+                        Text(style).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                    }
+                }
+            }
         } footer: {
-            Text("Gemini'dagi tarjima sessiyangizga bergan ko'rsatmani shu yerga qo'ying. U har tarjimaga va ✨ ga qo'shiladi (\(Prompts.styleLimit) belgigacha).")
+            Text("Har tarjimaga va ✨ ga qo'shiladi. Eng kuchli ta'sir — «asl xabar → sizga yoqqan tarjima» misollari. Fayldan (.md, .txt) yuklash ham mumkin, \(Prompts.styleLimit) belgigacha.")
         }
     }
 
@@ -294,12 +301,6 @@ struct ContentView: View {
         } footer: {
             Text("Xotira: skrinshotlardagi xabarlar faqat shu telefonda saqlanadi va ✨ ga shu do'st bilan suhbat konteksti bo'ladi; o'chirsangiz, saqlanganlari ham o'chadi.\n\nSifatli tarjima: kuchliroq modellar va ko'proq fikrlash, tarjima bir necha soniya sekinroq. Tajribaviy — sifatini o'zingiz solishtirib ko'ring.")
         }
-    }
-
-    private func saveStyle() {
-        let text = String(styleText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Prompts.styleLimit))
-        guard text != (state.translationStyle ?? "") else { return }
-        store.update { $0.translationStyle = text.isEmpty ? nil : text }
     }
 
     private var keyboardSection: some View {
@@ -332,16 +333,19 @@ struct ContentView: View {
         if let friends = state.friends, !friends.isEmpty {
             Section {
                 ForEach(friends) { friend in
-                    HStack {
-                        Text(Languages.flag(friend.language))
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(friend.name)
-                            Text(friendDetail(friend)).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        formalityMenu(for: friend)
-                        if state.activeFriend == friend.name {
-                            Image(systemName: "checkmark").foregroundStyle(Color.accentColor)
+                    NavigationLink {
+                        FriendDetailView(store: store, name: friend.name)
+                    } label: {
+                        HStack {
+                            Text(Languages.flag(friend.language))
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(friend.name)
+                                Text(friendDetail(friend)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                            Spacer()
+                            if state.activeFriend == friend.name {
+                                Image(systemName: "checkmark").foregroundStyle(Color.accentColor)
+                            }
                         }
                     }
                 }
@@ -355,37 +359,17 @@ struct ContentView: View {
             } header: {
                 Text("Do'stlar")
             } footer: {
-                Text("Har skrinshotdan keyin eslab qolinadi. Klaviaturada ularni bir bosishda tanlaysiz. O'ng tomondagi tanlov ✨ ularga qanchalik rasmiy yozishini belgilaydi.")
+                Text("Har skrinshotdan keyin eslab qolinadi. Klaviaturada ularni bir bosishda tanlaysiz. Bossangiz — muloqot darajasi, ko'rsatma va xotira.")
             }
         }
     }
 
     private func friendDetail(_ friend: Friend) -> String {
-        let remembered = friend.history?.count ?? 0
-        return "\(friend.language) · \(friend.tone)" + (remembered > 0 ? " · \(remembered) xabar xotirada" : "")
-    }
-
-    /// Lets the user decide how formal ✨ writes to a friend; "Avto" leaves it to the model.
-    private func formalityMenu(for friend: Friend) -> some View {
-        Menu {
-            Picker("Muloqot darajasi", selection: Binding<Friend.Formality?>(
-                get: { friend.formality },
-                set: { value in
-                    store.update { state in
-                        guard let index = state.friends?.firstIndex(where: { $0.name == friend.name }) else { return }
-                        state.friends?[index].formality = value
-                    }
-                }
-            )) {
-                Text("Avto").tag(Friend.Formality?.none)
-                Text("Norasmiy (sen)").tag(Friend.Formality?.some(.informal))
-                Text("Rasmiy (siz)").tag(Friend.Formality?.some(.formal))
-            }
-        } label: {
-            Text(friend.formality.map { $0 == .informal ? "Norasmiy" : "Rasmiy" } ?? "Avto")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
+        var parts = [friend.language, friend.tone]
+        if let formality = friend.formality { parts.append(formality == .informal ? "sen" : "siz") }
+        if friend.notes != nil { parts.append("ko'rsatma") }
+        if let remembered = friend.history?.count, remembered > 0 { parts.append("\(remembered) xabar") }
+        return parts.joined(separator: " · ")
     }
 
     // MARK: Context

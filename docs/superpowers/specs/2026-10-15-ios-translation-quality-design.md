@@ -68,6 +68,23 @@ almashtirish yechim emas.
 - Rejim qiymatini baholash foydalanuvchining o'zida: haqiqiy suhbatlarda yoqib sinab ko'riladi (yuqoridagi sinovda
   kuchli Flash modellar aniq yaxshi chiqmagan, shuning uchun va'da berilmaydi).
 
+### F. Do'st bo'yicha ko'rsatma, kattaroq limit, fayldan yuklash (2026-10-25)
+
+- Umumiy "Tarjima uslubi" **qanday tarjima qilish**ni aytadi; har do'stning **"Ko'rsatma"**si (`Friend.notes`) esa
+  **bu odam bilan qanday gaplashaman**ni: "sinfdoshim, hazil aralash", "sen deb gapiramiz".
+- Kelgan xabar tarjimasida do'st o'sha so'rovning o'zida aniqlanadi, shuning uchun skrinshot so'rovlariga (tarjima
+  ham, takliflar ham) **barcha tanish do'stlarning** ko'rsatmalari ism bilan yuboriladi (`Prompts.knownFriendsPart`),
+  model topgan do'stnikini qo'llaydi. ✨ da do'st oldindan ma'lum — faqat uniki ketadi.
+- Limit 500 → **4000 belgi** (≈1000 token), umumiy va har do'st uchun alohida. Cheksiz emas: har so'rovga
+  qo'shiladi; 8 do'st × 4000 hali ham yengil, undan kattasi javobni sekinlashtiradi va asosiy qoidalarni suyultiradi.
+- Ilovada to'liq ekranli muharrir (`InstructionsEditor`): hisoblagich, "Fayldan yuklash" (Files: .md/.txt, matn
+  maydonga **ko'chiriladi**, fayl bog'lanmaydi — nima yuborilayotgani doim ko'rinib turadi), "Tozalash". Saqlash
+  ekrandan chiqilganda yoki ilova fonga ketganda (har harfda emas — har saqlash klaviaturani uyg'otadi).
+- Do'st ekrani (`FriendDetailView`): til/ohang, daraja, ko'rsatma, xotira soni + tozalash, o'chirish. Ro'yxatdagi
+  inline daraja menyusi olib tashlandi.
+- Maslahat (ilovadagi izohda ham): sifatlardan ko'ra **«asl → yaxshi tarjima» misollari** kuchliroq; Gemini
+  sessiyasini Google Docs'ga eksport qilib, undan 15–20 misol olinadi — shu MD fayl bo'ladi.
+
 ## O'zgarishlar xaritasi
 
 | Fayl | O'zgarish |
@@ -78,7 +95,8 @@ almashtirish yechim emas.
 | `Shared/ChatHistory.swift` (yangi) | ustma-ust birlashtirish (sof mantiq, testlanadi) |
 | `Shared/Gemini.swift` | `Quality` (.fast/.careful) |
 | `Shared/Prompts.swift` (yangi, `Translator.swift`dan ajratildi) | prompt'lar sof mantiq bo'lib testlanadi |
-| `App/ContentView.swift` | uslub maydoni, tugmalar, do'stlar ro'yxatida daraja tanlovi |
+| `App/ContentView.swift` | uslub (muharrirga havola), tugmalar, do'stlar ro'yxati → do'st ekrani |
+| `App/InstructionsEditor.swift`, `App/InstructionsImport.swift`, `App/FriendDetailView.swift` (yangi) | muharrir, fayl o'qish (sof mantiq, testlanadi), do'st ekrani |
 | `Keyboard/KeyboardModel.swift`, `KeyboardView.swift` | ✨ ga uslub, tarix, daraja; ko'p qatorli xulosa |
 
 ## Sinash

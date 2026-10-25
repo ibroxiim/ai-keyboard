@@ -1,15 +1,34 @@
 import Foundation
 
 enum Prompts {
-    /// Longest "Tarjima uslubi" the user can add to a prompt.
-    static let styleLimit = 500
+    /// Longest text the user can put into a prompt: "Tarjima uslubi" and each friend's notes separately
+    /// (~1000 tokens). Every request carries them, so this is a brake on pasting a whole chat export.
+    static let styleLimit = 4000
+
+    /// Trimmed and cut at `styleLimit`; nil when there is nothing in it.
+    static func capped(_ text: String?) -> String? {
+        let trimmed = (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : String(trimmed.prefix(styleLimit))
+    }
 
     /// The user's own translation instructions (app setting), as a block to append to a prompt. Empty when unset.
     static func styleBlock(_ style: String?) -> String {
-        let text = (style ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return "" }
+        guard let text = capped(style) else { return "" }
         return "\nThe user's own instructions for how to translate (follow them unless they contradict the rules above):\n"
-            + String(text.prefix(styleLimit))
+            + text
+    }
+
+    /// Goes with a screenshot: who the model may recognise, and what the user said about each of them. The
+    /// partner is only identified inside this same request, so every friend's notes are sent and the model
+    /// applies the ones for the person it finds.
+    static func knownFriendsPart(_ friends: [Friend]) -> String? {
+        guard !friends.isEmpty else { return nil }
+        var text = "Known friends: " + friends.map(\.name).joined(separator: ", ")
+        for friend in friends {
+            guard let notes = capped(friend.notes) else { continue }
+            text += "\n\nThe user's notes about \(friend.name) (follow them when the partner is \(friend.name)):\n" + notes
+        }
+        return text
     }
 
     private static let screenshotBasics = """
@@ -18,6 +37,7 @@ enum Prompts {
     Messages on the RIGHT side (usually colored bubbles) are from the user ("me"); messages on the LEFT are from the other person ("them").
     Ignore the status bar, keyboard, app UI, and any system banners (e.g. a "Shortcuts" notification).
     Uzbek must use Latin script with ' for oʻ/gʻ.
+    If the message includes the user's notes about known friends, apply the notes about the person you identify as the partner: they say who that person is to the user and how to translate and reply for them.
 
     Return JSON:
     """
@@ -78,10 +98,14 @@ enum Prompts {
 
     static func rewriteInput(
         draft: String, context: ChatAnalysis?, friend: Friend?, language: String, formality: Friend.Formality?,
-        history: [ChatAnalysis.Line] = []
+        history: [ChatAnalysis.Line] = [], notes: String? = nil
     ) -> String {
         var lines = ["Target language: \(language)"]
         if let formality { lines.append("Formality chosen by the user: \(formality.rawValue)") }
+        if let notes = capped(notes) {
+            lines.append("The user's notes about this friend (follow them):")
+            lines.append(notes)
+        }
         let remembered = history.suffix(historyLimit).map { "\($0.from): \($0.text)" }
         if let context {
             lines.append("Conversation tone: \(context.tone)")

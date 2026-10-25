@@ -59,6 +59,8 @@ struct Friend: Codable, Hashable, Identifiable {
     /// What was said in this chat, collected from screenshots (see `ChatHistory`); nil when the user turned chat
     /// memory off. Stays on the device; only ✨ sends it, and only for this friend.
     var history: [ChatAnalysis.Line]?
+    /// What the user wrote about this person for the model: who they are, how to translate and reply for them.
+    var notes: String?
     var id: String { name }
 
     /// The model reads the name off each screenshot, so the same person comes back as "Christi..."
@@ -226,7 +228,8 @@ extension SharedState {
         list.insert(
             Friend(
                 name: name, language: analysis.language, tone: analysis.tone, lastSeen: Date(),
-                formality: same.compactMap(\.formality).first, history: history),
+                formality: same.compactMap(\.formality).first, history: history,
+                notes: same.compactMap(\.notes).first),
             at: 0)
         friends = Array(list.prefix(8))
         activeFriend = name
@@ -242,6 +245,7 @@ extension SharedState {
                 merged[index].name = Friend.bestName([merged[index].name, friend.name])
                 merged[index].formality = merged[index].formality ?? friend.formality
                 merged[index].history = merged[index].history ?? friend.history
+                merged[index].notes = merged[index].notes ?? friend.notes
             } else {
                 merged.append(friend)
             }

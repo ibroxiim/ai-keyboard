@@ -16,7 +16,7 @@ final class PromptsTests: XCTestCase {
 
     func testStyleIsTrimmedAndCapped() {
         XCTAssertTrue(Prompts.styleBlock("  oddiy  ").hasSuffix("\noddiy"))
-        let block = Prompts.styleBlock(String(repeating: "a", count: 900))
+        let block = Prompts.styleBlock(String(repeating: "a", count: Prompts.styleLimit + 500))
         XCTAssertTrue(block.hasSuffix(String(repeating: "a", count: Prompts.styleLimit)))
         XCTAssertFalse(block.contains(String(repeating: "a", count: Prompts.styleLimit + 1)))
     }

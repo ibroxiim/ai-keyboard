@@ -16,9 +16,8 @@ enum ChatAnalysisService {
         do {
             let jpeg = try Signposts.measure("prepareImage") { try ScreenshotImage.jpeg(from: imageData) }
             let settings = SharedStore.load()
-            let known = settings.friends?.map(\.name) ?? []
             let (analysis, partialError) = try await Translator.analyze(
-                jpeg: jpeg, knownFriends: known, style: settings.translationStyle, quality: settings.quality
+                jpeg: jpeg, friends: settings.friends ?? [], style: settings.translationStyle, quality: settings.quality
             ) { quick in
                 // Keyboard shows the translation now; suggestions follow when the second call lands.
                 SharedStore.update {
