@@ -22,7 +22,7 @@ final class InstructionsImportTests: XCTestCase {
     }
 
     func testALongFileIsCutAtTheLimit() {
-        let text = InstructionsImport.text(from: Data(String(repeating: "a", count: 10_000).utf8))
+        let text = InstructionsImport.text(from: Data(String(repeating: "a", count: Prompts.styleLimit + 500).utf8))
         XCTAssertEqual(text?.count, Prompts.styleLimit)
     }
 

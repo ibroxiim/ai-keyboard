@@ -2,8 +2,13 @@ import Foundation
 
 enum Prompts {
     /// Longest text the user can put into a prompt: "Tarjima uslubi" and each friend's notes separately
-    /// (~1000 tokens). Every request carries them, so this is a brake on pasting a whole chat export.
-    static let styleLimit = 4000
+    /// (~3000 tokens — room for rules plus 15–20 examples). Every request carries them, so this is a brake on
+    /// pasting a whole chat export. 4000 was too small for what Gemini writes out as its own style.
+    static let styleLimit = 12000
+
+    /// How much of all friends' notes together a screenshot request may carry. The list is most-recent-first,
+    /// so the friends the user actually talks to keep their notes when the budget runs out.
+    static let friendNotesBudget = 24000
 
     /// Trimmed and cut at `styleLimit`; nil when there is nothing in it.
     static func capped(_ text: String?) -> String? {
@@ -24,9 +29,12 @@ enum Prompts {
     static func knownFriendsPart(_ friends: [Friend]) -> String? {
         guard !friends.isEmpty else { return nil }
         var text = "Known friends: " + friends.map(\.name).joined(separator: ", ")
+        var budget = friendNotesBudget
         for friend in friends {
-            guard let notes = capped(friend.notes) else { continue }
-            text += "\n\nThe user's notes about \(friend.name) (follow them when the partner is \(friend.name)):\n" + notes
+            guard budget > 0, let notes = capped(friend.notes) else { continue }
+            let part = String(notes.prefix(budget))
+            budget -= part.count
+            text += "\n\nThe user's notes about \(friend.name) (follow them when the partner is \(friend.name)):\n" + part
         }
         return text
     }

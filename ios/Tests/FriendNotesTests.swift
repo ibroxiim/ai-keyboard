@@ -35,7 +35,7 @@ final class FriendNotesTests: XCTestCase {
     }
 
     func testNotesAreCapped() {
-        let part = Prompts.knownFriendsPart([friend("Anna", notes: String(repeating: "x", count: 9000))]) ?? ""
+        let part = Prompts.knownFriendsPart([friend("Anna", notes: String(repeating: "x", count: Prompts.styleLimit + 500))]) ?? ""
         XCTAssertTrue(part.hasSuffix(String(repeating: "x", count: Prompts.styleLimit)))
         XCTAssertFalse(part.contains(String(repeating: "x", count: Prompts.styleLimit + 1)))
     }
@@ -94,7 +94,26 @@ final class FriendNotesTests: XCTestCase {
         XCTAssertNil(state.activeFriendRecord?.notes)
     }
 
-    func testTheLimitGrewToFourThousand() {
-        XCTAssertEqual(Prompts.styleLimit, 4000)
+    func testTheLimitIsTwelveThousand() {
+        XCTAssertEqual(Prompts.styleLimit, 12000)
+    }
+
+    func testAllFriendsNotesTogetherStayWithinTheBudget() {
+        let long = String(repeating: "x", count: Prompts.styleLimit)
+        let friends = (1...4).map { friend("F\($0)", notes: long) }
+        let part = Prompts.knownFriendsPart(friends) ?? ""
+        XCTAssertEqual(part.filter { $0 == "x" }.count, Prompts.friendNotesBudget)
+        // Most recent friends first: F1 and F2 whole, F3 and F4 nothing.
+        XCTAssertTrue(part.contains("notes about F2"))
+        XCTAssertFalse(part.contains("notes about F3"))
+        XCTAssertTrue(part.contains("Known friends: F1, F2, F3, F4"))
+    }
+
+    func testAFriendWhoseNotesDoNotFitGetsTheRemainder() {
+        let notes = String(repeating: "x", count: 10000)
+        let friends = (1...3).map { friend("F\($0)", notes: notes) }
+        let part = Prompts.knownFriendsPart(friends) ?? ""
+        XCTAssertEqual(part.filter { $0 == "x" }.count, Prompts.friendNotesBudget)
+        XCTAssertTrue(part.contains("notes about F3"))
     }
 }

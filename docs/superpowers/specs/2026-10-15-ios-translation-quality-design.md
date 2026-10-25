@@ -75,8 +75,10 @@ almashtirish yechim emas.
 - Kelgan xabar tarjimasida do'st o'sha so'rovning o'zida aniqlanadi, shuning uchun skrinshot so'rovlariga (tarjima
   ham, takliflar ham) **barcha tanish do'stlarning** ko'rsatmalari ism bilan yuboriladi (`Prompts.knownFriendsPart`),
   model topgan do'stnikini qo'llaydi. ✨ da do'st oldindan ma'lum — faqat uniki ketadi.
-- Limit 500 → **4000 belgi** (≈1000 token), umumiy va har do'st uchun alohida. Cheksiz emas: har so'rovga
-  qo'shiladi; 8 do'st × 4000 hali ham yengil, undan kattasi javobni sekinlashtiradi va asosiy qoidalarni suyultiradi.
+- Limit 500 → 4000 → **12 000 belgi** (≈3000 token; 2026-10-25 kechqurun: Gemini o'z uslubini yozib berganda 4000
+  ga sig'madi), umumiy va har do'st uchun alohida. Skrinshot so'rovida hamma do'stning ko'rsatmasi **jami 24 000
+  belgi**gacha (eng yaqinda yozishganlardan boshlab, `Prompts.friendNotesBudget`). Cheksiz emas: har so'rovga
+  qo'shiladi, kattasi javobni sekinlashtiradi va asosiy qoidalarni suyultiradi.
 - Ilovada to'liq ekranli muharrir (`InstructionsEditor`): hisoblagich, "Fayldan yuklash" (Files: .md/.txt, matn
   maydonga **ko'chiriladi**, fayl bog'lanmaydi — nima yuborilayotgani doim ko'rinib turadi), "Tozalash". Saqlash
   ekrandan chiqilganda yoki ilova fonga ketganda (har harfda emas — har saqlash klaviaturani uyg'otadi).
