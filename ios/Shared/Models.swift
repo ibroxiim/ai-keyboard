@@ -4,7 +4,16 @@ struct Suggestion: Codable, Hashable, Identifiable {
     var text: String
     /// What `text` means in Uzbek, so the user knows exactly what they send.
     var uz: String
+    /// How `text` is read, in Latin letters, when its script is not one the user reads (Korean, Japanese,
+    /// Chinese, Arabic…); nil for Latin and Cyrillic.
+    var read: String?
     var id: String { text }
+
+    init(text: String, uz: String, read: String? = nil) {
+        self.text = text
+        self.uz = uz
+        self.read = read
+    }
 }
 
 /// What the model read from a DM screenshot. Built from two parallel Gemini calls

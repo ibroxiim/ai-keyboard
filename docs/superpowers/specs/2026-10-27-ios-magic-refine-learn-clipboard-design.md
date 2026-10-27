@@ -34,6 +34,21 @@ tuzatishlarini eslab qoladi. Klaviaturada ikkalasi ham yo'q edi. Uchinchisi — 
 - Skrinshotdan farqi: OCR yo'q, matn aniq, ~1 s; faqat nusxa olingan qism (ko'pincha bitta xabar).
 - Tugma bir marta ishlatilgach yoki yangi nusxa kelmaguncha ko'rinmaydi.
 
+## D. O'qilishi (`Suggestion.read`)
+
+- Lotin yoki kirillda yozilmaydigan tillar (koreys, yapon, xitoy, arab…) uchun har javob/variantga lotin
+  transkripsiyasi: koreys — Revised Romanization, yapon — Hepburn, xitoy — ohangli pinyin. Boshqa tillarda maydon yo'q.
+- Chipda ikkinchi qatorda "o'qilishi · ma'nosi", to'liq ro'yxatda alohida kursiv qator. Sxemada ixtiyoriy —
+  eski saqlangan holat o'zgarishsiz yuklanadi.
+
+## Qilinmaydi: oqimli (streaming) javob
+
+2026-10-27 sinovi: `streamGenerateContent?alt=sse` (Flash-Lite, JSON) — butun javob 38 s kutildi, keyin barcha
+bo'laklar 0,16 s ichida keldi. Tarjima ~50 token, Flash-Lite ularni ~0,2 s da yozadi: kechikish birinchi tokengacha
+bo'lgan vaqtda, oqimli ko'rsatish eng ko'pi bilan ~0,2 s "his" beradi. Buning uchun SSE o'qish, Hedge'dagi ikki
+modelning oqimini ajratish va App Group fayliga ko'p marta yozish kerak bo'lardi — foydasi narxini oqlamaydi.
+Haqiqiy tezlik yo'li — model tanlovi (`Hedge`) va so'rov hajmi.
+
 ## Sinash
 
 Unit: `RewriteTweak` prompt qatori; `EditLearning.example` qoidalari (o'zgarmagan, qirqilgan, haqiqiy tahrir,

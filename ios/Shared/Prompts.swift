@@ -66,7 +66,7 @@ enum Prompts {
     static let detailsSystem = screenshotBasics + """
     - summary_uz: 1 short sentence in Uzbek explaining what is going on right now.
     - transcript: the last up to 12 messages in order, verbatim, each {from: "me"|"them", text}.
-    - suggestions: exactly 3 replies the user could send next, written in the conversation language, matching the tone (length, casing, emoji use). Make them meaningfully different (e.g. positive / asks a question / polite decline or alternative). Each {text, uz} where uz is the Uzbek meaning.
+    - suggestions: exactly 3 replies the user could send next, written in the conversation language, matching the tone (length, casing, emoji use). Make them meaningfully different (e.g. positive / asks a question / polite decline or alternative). Each {text, uz, read} where uz is the Uzbek meaning and read is a Latin romanization of text for the user to read it aloud, only when the language is not written in Latin or Cyrillic script (Revised Romanization for Korean, Hepburn for Japanese, Pinyin with tone marks for Chinese); leave read out otherwise.
     """
 
     static let transcribeSystem = """
@@ -100,6 +100,7 @@ enum Prompts {
         If "How the user changed earlier suggestions" are given, learn from them: they show the wording, warmth and length the user actually sends to this friend. Prefer that style over the generic one.
         Match the speech level of the conversation. If the target language has politeness levels (Korean 반말/존댓말, Japanese, Russian ты/вы, Turkish sen/siz), use the level the recent messages use, informal with a friend by default; never fall back to the most formal level just because it is the textbook one. If the user chose a formality, always follow it.
         For each variant also give uz: a faithful translation of that variant into natural Uzbek (Latin script), including anything it implies, so the user knows exactly what they are sending.
+        Also give read: a Latin romanization of the variant for the user to read it aloud, only when the target language is not written in Latin or Cyrillic script (Revised Romanization for Korean, Hepburn for Japanese, Pinyin with tone marks for Chinese); leave it out otherwise.
         """ + styleBlock(style)
     }
 
@@ -150,9 +151,9 @@ enum Prompts {
         return lines.joined(separator: "\n")
     }
 
-    private static let suggestionSchema: [String: Any] = [
+    static let suggestionSchema: [String: Any] = [
         "type": "object",
-        "properties": ["text": ["type": "string"], "uz": ["type": "string"]],
+        "properties": ["text": ["type": "string"], "uz": ["type": "string"], "read": ["type": "string"]],
         "required": ["text", "uz"],
     ]
 

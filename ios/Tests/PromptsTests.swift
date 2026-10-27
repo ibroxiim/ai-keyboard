@@ -56,3 +56,29 @@ final class PromptsTests: XCTestCase {
         XCTAssertTrue(input.hasPrefix("Target language: English"))
     }
 }
+
+final class ReadingTests: XCTestCase {
+    func testSuggestionsCarryAnOptionalReading() throws {
+        let plain = try JSONDecoder().decode(Suggestion.self, from: Data(#"{"text":"hi","uz":"salom"}"#.utf8))
+        XCTAssertNil(plain.read)
+        let korean = try JSONDecoder().decode(
+            Suggestion.self, from: Data(#"{"text":"안녕","uz":"salom","read":"annyeong"}"#.utf8))
+        XCTAssertEqual(korean.read, "annyeong")
+        XCTAssertEqual(korean.id, "안녕")
+    }
+
+    func testTheSchemaAsksForTheReadingButDoesNotRequireIt() {
+        let schema = Prompts.suggestionSchema
+        XCTAssertNotNil((schema["properties"] as? [String: Any])?["read"])
+        XCTAssertEqual(schema["required"] as? [String], ["text", "uz"])
+        XCTAssertTrue(Prompts.detailsSystem.contains("romanization"))
+        XCTAssertTrue(Prompts.rewriteSystem(style: nil).contains("romanization"))
+        XCTAssertTrue(Prompts.clipboardSystem(style: nil).contains("romanization"))
+    }
+
+    func testStoredStateWithoutReadingsStillLoads() throws {
+        let json = #"{"context":{"partner":"A","language":"Korean","tone":"","last_incoming_uz":"","summary_uz":"","transcript":[],"suggestions":[{"text":"안녕","uz":"salom"}]}}"#
+        let state = try JSONDecoder().decode(SharedState.self, from: Data(json.utf8))
+        XCTAssertEqual(state.context?.suggestions.first?.read, nil)
+    }
+}

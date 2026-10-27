@@ -329,7 +329,7 @@ struct Chip: View {
                 .font(.system(size: 13.5, weight: .medium))
                 .foregroundStyle(.primary)
                 .lineLimit(2)
-            Text(suggestion.uz)
+            Text([suggestion.read, suggestion.uz].compactMap { $0 }.joined(separator: " · "))
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -421,10 +421,9 @@ struct VariantList: View {
                             card(text: "↩︎ Asli", detail: original, isSelected: picked == nil, action: restore)
                         }
                         ForEach(suggestions) { suggestion in
-                            card(text: suggestion.text, detail: suggestion.uz, isSelected: picked == suggestion.id) {
-                                pick(suggestion)
-                            }
-                            .id(suggestion.id)
+                            card(text: suggestion.text, reading: suggestion.read, detail: suggestion.uz,
+                                 isSelected: picked == suggestion.id) { pick(suggestion) }
+                                .id(suggestion.id)
                         }
                     }
                     .padding(.horizontal, 10)
@@ -437,12 +436,17 @@ struct VariantList: View {
         }
     }
 
-    private func card(text: String, detail: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+    private func card(
+        text: String, reading: String? = nil, detail: String, isSelected: Bool, action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(text)
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(.primary)
+                if let reading {
+                    Text(reading).font(.system(size: 13).italic()).foregroundStyle(.secondary)
+                }
                 Text(detail)
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)

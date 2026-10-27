@@ -56,7 +56,7 @@ extension Prompts {
           Stay faithful: keep every fact, number, name, question, the tone (teasing, flirty, sulky, excited) and the emoji. Do not add, soften or invent anything.
           If an expression has no good Uzbek equivalent, say its meaning in plain Uzbek instead of inventing slang. Add a short gloss in parentheses only for slang or an idiom that would otherwise be unclear.
         - summary_uz: 1 short sentence in Uzbek saying what they want or mean.
-        - suggestions: exactly 3 replies the user could send next, written in the text's language, matching its tone (length, casing, emoji use). Make them meaningfully different (e.g. positive / asks a question / polite decline or alternative). Each {text, uz} where uz is the Uzbek meaning.
+        - suggestions: exactly 3 replies the user could send next, written in the text's language, matching its tone (length, casing, emoji use). Make them meaningfully different (e.g. positive / asks a question / polite decline or alternative). Each {text, uz, read} where uz is the Uzbek meaning and read is a Latin romanization of text for the user to read it aloud, only when the language is not written in Latin or Cyrillic script (Revised Romanization for Korean, Hepburn for Japanese, Pinyin with tone marks for Chinese); leave read out otherwise.
         """ + styleBlock(style)
     }
 
@@ -67,14 +67,7 @@ extension Prompts {
             "tone": ["type": "string"],
             "last_incoming_uz": ["type": "string"],
             "summary_uz": ["type": "string"],
-            "suggestions": [
-                "type": "array",
-                "items": [
-                    "type": "object",
-                    "properties": ["text": ["type": "string"], "uz": ["type": "string"]],
-                    "required": ["text", "uz"],
-                ],
-            ],
+            "suggestions": ["type": "array", "items": suggestionSchema],
         ],
         "required": ["language", "tone", "last_incoming_uz", "summary_uz", "suggestions"],
     ]
