@@ -191,7 +191,18 @@ struct SuggestionBar: View {
                     .background(Capsule().fill(KeyboardColors.key))
                 }
                 .buttonStyle(.plain)
-                if model.showsTargetPicker {
+                if model.clipboardOffered {
+                    // Something was copied since the keyboard last looked: a message in the chat, most likely.
+                    Button(action: model.translateClipboard) {
+                        Text("📋 Tarjima")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 11)
+                            .frame(height: 30)
+                            .background(Capsule().fill(KeyboardColors.key))
+                    }
+                    .buttonStyle(.plain)
+                } else if model.showsTargetPicker {
                     Text("kimga yozyapsiz?").font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
                 } else if let note = model.expiryNote {
                     Text(note).font(.system(size: 12, weight: .semibold)).foregroundStyle(.orange).lineLimit(1)

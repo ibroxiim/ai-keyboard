@@ -86,6 +86,7 @@ targets:
       - Shared/GeminiQuality.swift
       - Shared/RewriteTweak.swift
       - Shared/EditLearning.swift
+      - Shared/ClipboardRead.swift
       - Shared/Models.swift
       - Shared/TouchOutcome.swift
       - Keyboard/TouchTracker.swift

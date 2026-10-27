@@ -66,6 +66,7 @@ final class KeyboardViewController: UIInputViewController {
         if model.expiryNote != expiryNote { model.expiryNote = expiryNote }
         model.reloadState()
         model.reconcileVoice()
+        model.checkClipboard(force: true)
         model.scheduleRefresh()
         model.confirmFullAccess()
         model.prepareHaptics()

@@ -70,3 +70,21 @@ enum Translator {
         var variants: [Suggestion]
     }
 }
+
+extension Translator {
+    /// The copied text → translation, summary and replies, as a `ChatAnalysis` for the shared state. The active
+    /// friend's notes go along, like with a screenshot; the other friends' do not — the text is for this chat.
+    static func readClipboard(
+        text: String, partner: Friend?, style: String?, quality: GeminiQuality = .fast
+    ) async throws -> ChatAnalysis {
+        var parts: [Gemini.Part] = []
+        if let partner, let notes = Prompts.capped(partner.notes) {
+            parts.append(.text("The user's notes about \(partner.name), who wrote this:\n" + notes))
+        }
+        parts.append(.text("Copied text:\n" + text))
+        let read = try await Gemini.generate(
+            ClipboardRead.self, system: Prompts.clipboardSystem(style: style), parts: parts,
+            schema: Prompts.clipboardSchema, quality: quality)
+        return read.analysis(partner: partner?.name ?? "", text: text)
+    }
+}

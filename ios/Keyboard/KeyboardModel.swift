@@ -25,6 +25,9 @@ final class KeyboardModel {
     var pickedVariantID: Suggestion.ID?
     /// "qisqaroq", "iliqroq"… asked of the current variants; every change asks for them again.
     var tweaks: [RewriteTweak] = []
+    /// 📋: the pasteboard holds text the keyboard has not offered yet (see `checkClipboard`).
+    var clipboardOffered = false
+    @ObservationIgnored private var clipboardChecked = Date.distantPast
     /// The field's last non-empty text while a variant was in it — what the user sent once it is empty.
     @ObservationIgnored private var lastSeenText: String?
     var isRewriting = false
@@ -240,6 +243,65 @@ final class KeyboardModel {
     func toggleTargetPicker() {
         keyDown()
         showsTargetPicker.toggle()
+    }
+
+    // MARK: Clipboard
+
+    /// A keyboard with Full Access may read the pasteboard, and iOS tells the user when it does. `changeCount`
+    /// and `hasStrings` are not reading, so the offer costs nothing until it is tapped. Throttled: it is also
+    /// called on text changes, and the pasteboard is another process.
+    func checkClipboard(force: Bool = false) {
+        guard force || clipboardChecked.timeIntervalSinceNow < -2 else { return }
+        clipboardChecked = Date()
+        let board = UIPasteboard.general
+        let offered = hasFullAccess && board.changeCount != UserDefaults.standard.integer(forKey: "clipboardSeen")
+            && board.hasStrings
+        if clipboardOffered != offered { clipboardOffered = offered }
+    }
+
+    /// 📋 Tarjima — the copied message, read like a screenshot but from its exact text.
+    func translateClipboard() {
+        guard hasFullAccess else { return }
+        keyDown()
+        let board = UIPasteboard.general
+        UserDefaults.standard.set(board.changeCount, forKey: "clipboardSeen")
+        if clipboardOffered { clipboardOffered = false }
+        guard let text = ClipboardOffer.usable(board.string) else {
+            flash("Nusxada matn yo'q")
+            return
+        }
+        let partner = state.activeFriendRecord
+        let style = state.translationStyle
+        let quality = state.quality
+        // The same state the Back Tap intent writes, so the spinner, the line, the card and ✨ just follow.
+        SharedStore.update {
+            $0.analyzingSince = Date()
+            $0.context = nil
+            $0.contextDate = nil
+        }
+        reloadState()
+        Task {
+            do {
+                let analysis = try await Signposts.measureAsync("clipboard") {
+                    try await Translator.readClipboard(text: text, partner: partner, style: style, quality: quality)
+                }
+                SharedStore.update {
+                    $0.context = analysis
+                    $0.contextDate = Date()
+                    $0.analyzingSince = nil
+                    $0.lastError = nil
+                    $0.lastErrorDate = nil
+                    $0.remember(analysis)
+                }
+            } catch {
+                SharedStore.update {
+                    $0.analyzingSince = nil
+                    $0.lastError = error.localizedDescription
+                    $0.lastErrorDate = Date()
+                }
+            }
+            reloadState()
+        }
     }
 
     /// Setup checklist proof for the app. Only a keyboard with Full Access can write to the App Group.
@@ -467,6 +529,7 @@ final class KeyboardModel {
     /// The host app changed the text. A sent message empties the field: the variants were for that message, and
     /// what the user changed in the picked one before sending is worth remembering.
     func textChanged() {
+        checkClipboard()
         guard !isReplacingText, !variants.isEmpty else { return }
         let text = currentText
         if !text.isEmpty {

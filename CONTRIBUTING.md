@@ -73,6 +73,12 @@ Klaviatura kengaytmasini sinashning o'z cheklovlari bor:
 - **Prompt'lar** (`ios/Shared/Prompts.swift`) o'zgarsa, haqiqiy Gemini bilan kamida bitta **5–6 ta ketma-ket xabarli**
   to'qima suhbatda sinang: har xabar alohida qatorda tarjima bo'lishi kerak. Matnli testlar prompt'ning asosiy
   qoidalari o'chib ketmasligini tekshiradi, tarjima sifatini emas.
+- **✨ dan keyin**: variantlar qatorida «qisqaroq · iliqroq · rasmiyroq · hazil» tugmalari (asl qoralama qayta
+  so'raladi), «↩︎ Asli» qoralamani qaytaradi. Variantni yuborishdan oldin o'zgartirsangiz, klaviatura buni o'sha
+  do'st uchun misol sifatida eslab qoladi (ilovada do'st ekranida ko'rinadi va unutiladi).
+- **📋 Tarjima**: DM'da xabarni nusxalasangiz klaviaturada tugma chiqadi — skrinshotsiz, aniq matn bilan. iOS
+  «AI Keyboard … dan nusxa oldi» bannerini ko'rsatadi, bu normal. Full Access kerak, shuning uchun Simulator'da
+  sinalmaydi.
 - Issue va PR'larga **haqiqiy DM skrinshotlarini qo'ymang** — boshqa odamlarning xabarlari. Ismlar va matnni yashiring
   yoki soxta suhbat ishlating.
 
