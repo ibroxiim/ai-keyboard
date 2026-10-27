@@ -16,8 +16,13 @@ final class KeyboardModel {
     var alphabet = Alphabet(rawValue: UserDefaults.standard.string(forKey: "alphabet") ?? "") ?? .latin
     var shift: Shift = .off
     var state = SharedState()
-    /// ✨ results for what the user typed; while non-empty they replace the screenshot suggestions.
+    /// ✨ results for what the user typed; while non-empty they replace the screenshot suggestions. They stay
+    /// after one is picked, so another one — or the original draft — can be put in instead.
     var variants: [Suggestion] = []
+    /// What was in the field when ✨ was tapped, so a picked variant is not a one-way door. Lives with `variants`.
+    var originalDraft: String?
+    /// The variant now in the field, for the highlight; nil while the field holds the original draft.
+    var pickedVariantID: Suggestion.ID?
     var isRewriting = false
     var notice: String?
     var showsDetails = false
@@ -56,6 +61,8 @@ final class KeyboardModel {
     @ObservationIgnored private var lastShiftTap: Date?
     @ObservationIgnored private var lastSpaceTap: Date?
     @ObservationIgnored private var rewriteTask: Task<Void, Never>?
+    /// `replaceAllText` empties the field on its way; `textChanged` must not take that for a sent message.
+    @ObservationIgnored private var isReplacingText = false
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     @ObservationIgnored private let haptics = UIImpactFeedbackGenerator(style: .light)
@@ -103,7 +110,7 @@ final class KeyboardModel {
         let previousContextDate = state.contextDate
         state = loaded
         // ✨ variants belong to the chat they were made for.
-        if state.contextDate != previousContextDate, !variants.isEmpty { variants = [] }
+        if state.contextDate != previousContextDate { clearVariants() }
         if context == nil, showsDetails { showsDetails = false }
         closeVariantListIfEmpty()
         // Suggestions take over the row once a screenshot lands.
@@ -177,8 +184,19 @@ final class KeyboardModel {
     /// Called whenever the shared state or the time moves: the app answered, or our own session finished.
     func reconcileVoice() {
         if voiceOpeningSince != nil, state.activeVoice(at: now) != nil { voiceOpeningSince = nil }
-        if case .insert(let text) = VoiceInsertion.decision(voice: state.voice, pendingID: pendingVoiceID, now: now) {
+        switch VoiceInsertion.decision(voice: state.voice, pendingID: pendingVoiceID, now: now) {
+        case .insert(let text):
             insertVoiceText(text)
+        case .failed(let message):
+            // Told once, like any notice. Left in the state it kept the bar on the error — and the target pill
+            // out of reach — for as long as the session lived.
+            flash(message, for: 6)
+            pendingVoiceID = nil
+            if voiceOpeningSince != nil { voiceOpeningSince = nil }
+            SharedStore.update { $0.voice = nil }
+            reloadState()
+        case .offer, .none:
+            break
         }
     }
 
@@ -358,7 +376,8 @@ final class KeyboardModel {
             flash("✨ uchun Settings'da AI Keyboard → Allow Full Access'ni yoqing")
             return
         }
-        let draft = currentText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let original = currentText
+        let draft = original.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !draft.isEmpty else {
             flash(context == nil
                 ? "Avval o'zbekcha yozing, keyin ✨ ni bosing"
@@ -385,6 +404,8 @@ final class KeyboardModel {
                 }
                 guard !Task.isCancelled else { return }
                 variants = result
+                originalDraft = original
+                if pickedVariantID != nil { pickedVariantID = nil }
             } catch {
                 guard !Task.isCancelled else { return }
                 flash(error.localizedDescription)
@@ -395,13 +416,36 @@ final class KeyboardModel {
     func pick(_ suggestion: Suggestion) {
         keyDown()
         replaceAllText(with: suggestion.text)
-        variants = []
+        // The screenshot replies always stayed on the row; now the ✨ variants do too.
+        if !variants.isEmpty, pickedVariantID != suggestion.id { pickedVariantID = suggestion.id }
+        closeVariantList()
+    }
+
+    /// ↩︎ Asli — what the user had typed before ✨.
+    func restoreOriginal() {
+        guard let originalDraft else { return }
+        keyDown()
+        replaceAllText(with: originalDraft)
+        if pickedVariantID != nil { pickedVariantID = nil }
         closeVariantList()
     }
 
     func dismissVariants() {
-        variants = []
+        clearVariants()
         closeVariantListIfEmpty()
+    }
+
+    /// The host app changed the text. A sent message empties the field, and the variants were for that message.
+    func textChanged() {
+        guard !isReplacingText, !variants.isEmpty, currentText.isEmpty else { return }
+        clearVariants()
+        closeVariantListIfEmpty()
+    }
+
+    private func clearVariants() {
+        if !variants.isEmpty { variants = [] }
+        if originalDraft != nil { originalDraft = nil }
+        if pickedVariantID != nil { pickedVariantID = nil }
     }
 
     func dismissContext() {
@@ -409,7 +453,7 @@ final class KeyboardModel {
             $0.context = nil
             $0.contextDate = nil
         }
-        variants = []
+        clearVariants()
         closeVariantList()
         reloadState()
     }
@@ -423,6 +467,8 @@ final class KeyboardModel {
     /// The DM field holds only the draft, so a picked reply replaces all of it.
     private func replaceAllText(with text: String) {
         guard let proxy else { return }
+        isReplacingText = true
+        defer { isReplacingText = false }
         let after = proxy.documentContextAfterInput ?? ""
         if !after.isEmpty { proxy.adjustTextPosition(byCharacterOffset: after.utf16.count) }
         // documentContextBeforeInput can be truncated by the host app, so keep deleting until it is empty.
@@ -434,11 +480,11 @@ final class KeyboardModel {
         proxy.insertText(text)
     }
 
-    private func flash(_ text: String) {
+    private func flash(_ text: String, for seconds: Double = 4) {
         notice = text
         noticeTask?.cancel()
         noticeTask = Task {
-            try? await Task.sleep(for: .seconds(4))
+            try? await Task.sleep(for: .seconds(seconds))
             guard !Task.isCancelled else { return }
             notice = nil
         }

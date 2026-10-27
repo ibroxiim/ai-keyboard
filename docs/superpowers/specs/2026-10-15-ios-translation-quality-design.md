@@ -87,6 +87,17 @@ almashtirish yechim emas.
 - Maslahat (ilovadagi izohda ham): sifatlardan ko'ra **«asl → yaxshi tarjima» misollari** kuchliroq; Gemini
   sessiyasini Google Docs'ga eksport qilib, undan 15–20 misol olinadi — shu MD fayl bo'ladi.
 
+### G. ✨ variantlari tanlangandan keyin ham qoladi (2026-10-27)
+
+- Avval tanlangan variant qatorni yopib qo'yardi — yoqmasa, qaytib bo'lmasdi. Endi variantlar qoladi: tanlangani
+  belgilanadi, boshqasini bosib almashtirish mumkin, qatorning boshida **"↩︎ Asli"** chipi ✨ bosilgandagi
+  qoralamani qaytaradi (`KeyboardModel.originalDraft`, `pickedVariantID`).
+- Yo'qoladi: ✕, yangi ✨, yangi skrinshot, yoki maydon bo'shaganda (xabar yuborildi — `textChanged`).
+  `replaceAllText` maydonni bo'shatib qayta yozadi, shu paytdagi `textDidChange` yuborish deb hisoblanmaydi.
+- Ovoz: `failed` holati endi holat emas, bir martalik xabar — klaviatura ko'rishi bilan 6 s ko'rsatib, umumiy holatni
+  tozalaydi (`VoiceInsertion.Decision.failed`), aks holda "Ovoz eshitilmadi" 2 daqiqa turib, "✨ → til" tugmasini
+  yashirib qo'yardi.
+
 ## O'zgarishlar xaritasi
 
 | Fayl | O'zgarish |

@@ -9,13 +9,22 @@ enum VoiceInsertion {
         case insert(String)
         /// A result is waiting but nothing here asked for it — offer a button rather than guess the field.
         case offer(String)
+        /// The session failed ("Ovoz eshitilmadi", no microphone): tell the user once, then forget the session,
+        /// or the bar would show the error instead of the target pill for as long as the session lived.
+        case failed(String)
     }
 
     static func decision(voice: VoiceState?, pendingID: String?, now: Date) -> Decision {
-        guard let voice, voice.isLive(at: now), voice.phase == .done,
-              let text = voice.text, !text.isEmpty
-        else { return .none }
-        return voice.id == pendingID ? .insert(text) : .offer(text)
+        guard let voice, voice.isLive(at: now) else { return .none }
+        switch voice.phase {
+        case .failed:
+            return .failed(voice.error ?? "Ovozdan matn: xato")
+        case .done:
+            guard let text = voice.text, !text.isEmpty else { return .none }
+            return voice.id == pendingID ? .insert(text) : .offer(text)
+        case .recording, .transcribing:
+            return .none
+        }
     }
 
     /// Dictation continues the sentence: a space before the text, unless the cursor is at the very start or

@@ -25,7 +25,9 @@ struct VoiceState: Codable, Equatable {
         case .recording: 100
         case .transcribing: 60
         case .done: 10 * 60
-        case .failed: 2 * 60
+        // The keyboard turns it into a notice and clears it as soon as it sees it; this only covers a keyboard
+        // that never shows.
+        case .failed: 30
         }
     }
 

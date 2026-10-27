@@ -16,8 +16,8 @@ final class VoiceStateTests: XCTestCase {
         XCTAssertFalse(voice(.transcribing).isLive(at: now + 60))
         XCTAssertTrue(voice(.done).isLive(at: now + 599))
         XCTAssertFalse(voice(.done).isLive(at: now + 600))
-        XCTAssertTrue(voice(.failed).isLive(at: now + 119))
-        XCTAssertFalse(voice(.failed).isLive(at: now + 120))
+        XCTAssertTrue(voice(.failed).isLive(at: now + 29))
+        XCTAssertFalse(voice(.failed).isLive(at: now + 30))
     }
 
     func testRecordingOutlastsTheRecordingLimit() {

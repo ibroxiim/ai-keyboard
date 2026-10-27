@@ -28,7 +28,20 @@ final class VoiceInsertionTests: XCTestCase {
     func testNothingToDoUntilTheSessionIsDone() {
         XCTAssertEqual(VoiceInsertion.decision(voice: nil, pendingID: "a", now: now), .none)
         XCTAssertEqual(VoiceInsertion.decision(voice: voice(.recording), pendingID: "a", now: now), .none)
-        XCTAssertEqual(VoiceInsertion.decision(voice: voice(.failed, error: "x"), pendingID: "a", now: now), .none)
+        XCTAssertEqual(VoiceInsertion.decision(voice: voice(.transcribing), pendingID: "a", now: now), .none)
+    }
+
+    func testFailureIsReportedWhoeverAskedForIt() {
+        XCTAssertEqual(
+            VoiceInsertion.decision(voice: voice(.failed, error: "Ovoz eshitilmadi"), pendingID: "a", now: now),
+            .failed("Ovoz eshitilmadi"))
+        XCTAssertEqual(
+            VoiceInsertion.decision(voice: voice(.failed, id: "b", error: "x"), pendingID: nil, now: now), .failed("x"))
+        XCTAssertEqual(VoiceInsertion.decision(voice: voice(.failed), pendingID: "a", now: now), .failed("Ovozdan matn: xato"))
+    }
+
+    func testAnOldFailureIsForgotten() {
+        XCTAssertEqual(VoiceInsertion.decision(voice: voice(.failed, error: "x"), pendingID: "a", now: now + 31), .none)
     }
 
     func testExpiredOrEmptyResultsAreIgnored() {

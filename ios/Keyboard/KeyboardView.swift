@@ -46,7 +46,8 @@ struct KeyboardView: View {
                 VariantList(
                     title: model.variants.isEmpty ? "Tayyor javoblar" : "✨ Variantlar",
                     suggestions: model.chips, focus: model.variantListFocus,
-                    pick: { model.pick($0) }, close: model.closeVariantList)
+                    original: model.variants.isEmpty ? nil : model.originalDraft, picked: model.pickedVariantID,
+                    pick: { model.pick($0) }, restore: model.restoreOriginal, close: model.closeVariantList)
                     .frame(height: KeyboardMetrics.keysHeight)
             } else if model.showsEmoji {
                 EmojiRepresentable(model: model)
@@ -106,10 +107,13 @@ struct SuggestionBar: View {
                             }
                         }
                     } else {
+                        if !model.variants.isEmpty, let draft = model.originalDraft {
+                            OriginalChip(draft: draft, isSelected: model.pickedVariantID == nil, restore: model.restoreOriginal)
+                        }
                         ForEach(model.chips) { suggestion in
                             Chip(
-                                suggestion: suggestion, pick: { model.pick(suggestion) },
-                                expand: { model.openVariantList(focus: suggestion) })
+                                suggestion: suggestion, isSelected: model.pickedVariantID == suggestion.id,
+                                pick: { model.pick(suggestion) }, expand: { model.openVariantList(focus: suggestion) })
                         }
                     }
                 }
@@ -131,7 +135,9 @@ struct SuggestionBar: View {
             voiceStatusView
         } else if !model.variants.isEmpty {
             HStack(spacing: 6) {
-                Text("✨ Variantlar — birini tanlang").font(.system(size: 13, weight: .medium))
+                Text(model.pickedVariantID == nil ? "✨ Variantlar — birini tanlang" : "✨ Tanlandi — boshqasi yoki ↩︎ asli")
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
                 closeButton { model.dismissVariants() }
             }
         } else if let context = model.context {
@@ -291,6 +297,8 @@ struct SuggestionBar: View {
 
 struct Chip: View {
     let suggestion: Suggestion
+    /// The reply that is in the field right now.
+    let isSelected: Bool
     let pick: () -> Void
     /// Long press: the whole reply in the full-size list, scrolled to this one. A plain tap and a long press are
     /// separate gestures here — a `Button` would also fire its tap when the long press is released.
@@ -312,11 +320,37 @@ struct Chip: View {
         .frame(maxWidth: 240, maxHeight: .infinity, alignment: .leading)
         .fixedSize(horizontal: true, vertical: false)
         .background(RoundedRectangle(cornerRadius: 10).fill(KeyboardColors.key))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(isSelected ? Color.accentColor : .clear, lineWidth: 2))
         .shadow(color: KeyboardColors.shadow, radius: 0, x: 0, y: 1)
         .contentShape(RoundedRectangle(cornerRadius: 10))
         .onTapGesture(perform: pick)
         .onLongPressGesture(minimumDuration: 0.35, perform: expand)
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// Puts back what the user had typed before ✨, so a picked variant is not a one-way door.
+struct OriginalChip: View {
+    let draft: String
+    let isSelected: Bool
+    let restore: () -> Void
+
+    var body: some View {
+        Button(action: restore) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("↩︎ Asli").font(.system(size: 13.5, weight: .medium))
+                Text(draft).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+            }
+            .foregroundStyle(.primary)
+            .multilineTextAlignment(.leading)
+            .padding(.horizontal, 10)
+            .frame(maxWidth: 160, maxHeight: .infinity, alignment: .leading)
+            .fixedSize(horizontal: true, vertical: false)
+            .background(RoundedRectangle(cornerRadius: 10).fill(KeyboardColors.key))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(isSelected ? Color.accentColor : .clear, lineWidth: 2))
+            .shadow(color: KeyboardColors.shadow, radius: 0, x: 0, y: 1)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -326,7 +360,11 @@ struct VariantList: View {
     let suggestions: [Suggestion]
     /// The card to scroll to when the list opens; nil — the top.
     let focus: Suggestion.ID?
+    /// The draft ✨ started from, when these are ✨ variants; nil for screenshot replies.
+    let original: String?
+    let picked: Suggestion.ID?
     let pick: (Suggestion) -> Void
+    let restore: () -> Void
     let close: () -> Void
 
     var body: some View {
@@ -341,8 +379,14 @@ struct VariantList: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 8) {
+                        if let original {
+                            card(text: "↩︎ Asli", detail: original, isSelected: picked == nil, action: restore)
+                        }
                         ForEach(suggestions) { suggestion in
-                            card(suggestion).id(suggestion.id)
+                            card(text: suggestion.text, detail: suggestion.uz, isSelected: picked == suggestion.id) {
+                                pick(suggestion)
+                            }
+                            .id(suggestion.id)
                         }
                     }
                     .padding(.horizontal, 10)
@@ -355,13 +399,13 @@ struct VariantList: View {
         }
     }
 
-    private func card(_ suggestion: Suggestion) -> some View {
-        Button { pick(suggestion) } label: {
+    private func card(text: String, detail: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(suggestion.text)
+                Text(text)
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(.primary)
-                Text(suggestion.uz)
+                Text(detail)
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
             }
@@ -370,6 +414,7 @@ struct VariantList: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(10)
             .background(RoundedRectangle(cornerRadius: 10).fill(KeyboardColors.key))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(isSelected ? Color.accentColor : .clear, lineWidth: 2))
             .shadow(color: KeyboardColors.shadow, radius: 0, x: 0, y: 1)
         }
         .buttonStyle(.plain)
