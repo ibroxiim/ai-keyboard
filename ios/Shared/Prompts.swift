@@ -96,6 +96,8 @@ enum Prompts {
         Keep the user's intent and facts. Never add plans, offers, promises, names or details that are not in the draft (for example do not add "on me" = offering to pay).
         Do not add greetings or sign-offs unless the draft has them.
         If conversation context is given, the reply must fit it (answer what was asked, keep references consistent) and match its tone: length, casing, slang, emoji use.
+        If an "Adjust" line is given, apply it to all three variants on top of everything above (e.g. "shorter" makes all three shorter, variant 3 shortest).
+        If "How the user changed earlier suggestions" are given, learn from them: they show the wording, warmth and length the user actually sends to this friend. Prefer that style over the generic one.
         Match the speech level of the conversation. If the target language has politeness levels (Korean 반말/존댓말, Japanese, Russian ты/вы, Turkish sen/siz), use the level the recent messages use, informal with a friend by default; never fall back to the most formal level just because it is the textbook one. If the user chose a formality, always follow it.
         For each variant also give uz: a faithful translation of that variant into natural Uzbek (Latin script), including anything it implies, so the user knows exactly what they are sending.
         """ + styleBlock(style)
@@ -106,10 +108,20 @@ enum Prompts {
 
     static func rewriteInput(
         draft: String, context: ChatAnalysis?, friend: Friend?, language: String, formality: Friend.Formality?,
-        history: [ChatAnalysis.Line] = [], notes: String? = nil
+        history: [ChatAnalysis.Line] = [], notes: String? = nil, tweaks: [RewriteTweak] = [],
+        examples: [Friend.Example] = []
     ) -> String {
         var lines = ["Target language: \(language)"]
         if let formality { lines.append("Formality chosen by the user: \(formality.rawValue)") }
+        if !tweaks.isEmpty { lines.append("Adjust: " + tweaks.map(\.instruction).joined(separator: "; ")) }
+        if !examples.isEmpty {
+            lines.append("How the user changed earlier suggestions for this friend (draft → suggested → what they sent):")
+            for example in examples.suffix(EditLearning.promptLimit) {
+                lines.append("- draft: \(example.draft)")
+                lines.append("  suggested: \(example.suggested)")
+                lines.append("  sent: \(example.sent)")
+            }
+        }
         if let notes = capped(notes) {
             lines.append("The user's notes about this friend (follow them):")
             lines.append(notes)

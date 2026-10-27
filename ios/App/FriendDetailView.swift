@@ -53,8 +53,11 @@ struct FriendDetailView: View {
                     LabeledContent("Xotira", value: "\(friend.history?.count ?? 0) xabar")
                     Button("Xotirani tozalash", role: .destructive) { update { $0.history = nil } }
                         .disabled((friend.history ?? []).isEmpty)
+                    LabeledContent("O'rganilgan tuzatishlar", value: "\(friend.examples?.count ?? 0)")
+                    Button("Tuzatishlarni unutish", role: .destructive) { update { $0.examples = nil } }
+                        .disabled((friend.examples ?? []).isEmpty)
                 } footer: {
-                    Text("Skrinshotlardan yig'ilgan xabarlar — ✨ uchun suhbat konteksti. Faqat shu telefonda.")
+                    Text("Xotira — skrinshotlardan yig'ilgan xabarlar, ✨ uchun suhbat konteksti. Tuzatishlar — ✨ variantini yuborishdan oldin o'zgartirgan holatlaringiz; ✨ ulardan uslubingizni o'rganadi. Ikkalasi faqat shu telefonda.")
                 }
                 Section {
                     Button("Do'stni o'chirish", role: .destructive) {

@@ -84,6 +84,8 @@ targets:
       - Shared/Prompts.swift
       - Shared/ChatHistory.swift
       - Shared/GeminiQuality.swift
+      - Shared/RewriteTweak.swift
+      - Shared/EditLearning.swift
       - Shared/Models.swift
       - Shared/TouchOutcome.swift
       - Keyboard/TouchTracker.swift

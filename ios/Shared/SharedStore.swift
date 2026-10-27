@@ -61,6 +61,8 @@ struct Friend: Codable, Hashable, Identifiable {
     var history: [ChatAnalysis.Line]?
     /// What the user wrote about this person for the model: who they are, how to translate and reply for them.
     var notes: String?
+    /// ✨ variants the user changed before sending, for the model to learn their taste (see `EditLearning`).
+    var examples: [Example]?
     var id: String { name }
 
     /// The model reads the name off each screenshot, so the same person comes back as "Christi..."
@@ -208,7 +210,23 @@ extension SharedState {
     mutating func setRememberChats(_ on: Bool) {
         rememberChats = on
         guard !on, friends != nil else { return }
-        for index in friends!.indices { friends![index].history = nil }
+        for index in friends!.indices {
+            friends![index].history = nil
+            friends![index].examples = nil
+        }
+    }
+
+    /// The correction goes to the friend ✨ was writing to; nothing is kept while chat memory is off.
+    mutating func learn(_ example: Friend.Example) {
+        guard rememberChats != false, let activeFriend,
+              let index = friends?.firstIndex(where: { $0.name == activeFriend })
+        else { return }
+        friends?[index].learn(example)
+    }
+
+    /// The active friend's corrections, for ✨; nothing while chat memory is off.
+    var rememberedExamples: [Friend.Example] {
+        rememberChats == false ? [] : activeFriendRecord?.examples ?? []
     }
 
     mutating func remember(_ analysis: ChatAnalysis) {
@@ -229,7 +247,8 @@ extension SharedState {
             Friend(
                 name: name, language: analysis.language, tone: analysis.tone, lastSeen: Date(),
                 formality: same.compactMap(\.formality).first, history: history,
-                notes: same.compactMap(\.notes).first),
+                notes: same.compactMap(\.notes).first,
+                examples: rememberChats == false ? nil : same.compactMap(\.examples).first),
             at: 0)
         friends = Array(list.prefix(8))
         activeFriend = name
@@ -246,6 +265,7 @@ extension SharedState {
                 merged[index].formality = merged[index].formality ?? friend.formality
                 merged[index].history = merged[index].history ?? friend.history
                 merged[index].notes = merged[index].notes ?? friend.notes
+                merged[index].examples = merged[index].examples ?? friend.examples
             } else {
                 merged.append(friend)
             }

@@ -134,10 +134,18 @@ struct SuggestionBar: View {
         } else if model.voiceStatus != .idle {
             voiceStatusView
         } else if !model.variants.isEmpty {
+            // "Biroz qisqaroq" — asked of the variants with one tap, the way it would be asked of a chat model.
             HStack(spacing: 6) {
-                Text(model.pickedVariantID == nil ? "✨ Variantlar — birini tanlang" : "✨ Tanlandi — boshqasi yoki ↩︎ asli")
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 5) {
+                        Text("✨").font(.system(size: 13))
+                        ForEach(RewriteTweak.allCases, id: \.self) { tweak in
+                            TweakPill(tweak: tweak, isOn: model.tweaks.contains(tweak)) { model.refine(tweak) }
+                        }
+                    }
+                }
+                .scrollClipDisabled()
+                .modifier(NoScrollEdgeEffect())
                 closeButton { model.dismissVariants() }
             }
         } else if let context = model.context {
@@ -326,6 +334,25 @@ struct Chip: View {
         .onTapGesture(perform: pick)
         .onLongPressGesture(minimumDuration: 0.35, perform: expand)
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// One of "qisqaroq · iliqroq · rasmiyroq · hazil"; lit while it is applied.
+struct TweakPill: View {
+    let tweak: RewriteTweak
+    let isOn: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(tweak.label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(isOn ? .white : .primary)
+                .padding(.horizontal, 9)
+                .frame(height: 26)
+                .background(Capsule().fill(isOn ? Color.accentColor : KeyboardColors.key))
+        }
+        .buttonStyle(.plain)
     }
 }
 

@@ -55,11 +55,11 @@ enum Translator {
     static func rewrite(
         draft: String, context: ChatAnalysis?, friend: Friend?, language: String,
         formality: Friend.Formality?, history: [ChatAnalysis.Line], notes: String?, style: String?,
-        quality: GeminiQuality = .fast
+        tweaks: [RewriteTweak] = [], examples: [Friend.Example] = [], quality: GeminiQuality = .fast
     ) async throws -> [Suggestion] {
         let input = Prompts.rewriteInput(
             draft: draft, context: context, friend: friend, language: language, formality: formality,
-            history: history, notes: notes)
+            history: history, notes: notes, tweaks: tweaks, examples: examples)
         let result = try await Gemini.generate(
             RewriteResult.self, system: Prompts.rewriteSystem(style: style), parts: [.text(input)],
             schema: Prompts.rewriteSchema, quality: quality)

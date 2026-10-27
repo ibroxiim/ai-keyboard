@@ -23,6 +23,10 @@ final class KeyboardModel {
     var originalDraft: String?
     /// The variant now in the field, for the highlight; nil while the field holds the original draft.
     var pickedVariantID: Suggestion.ID?
+    /// "qisqaroq", "iliqroq"… asked of the current variants; every change asks for them again.
+    var tweaks: [RewriteTweak] = []
+    /// The field's last non-empty text while a variant was in it — what the user sent once it is empty.
+    @ObservationIgnored private var lastSeenText: String?
     var isRewriting = false
     var notice: String?
     var showsDetails = false
@@ -384,6 +388,23 @@ final class KeyboardModel {
                 : "Tayyor javoblardan birini tanlang yoki o'zbekcha yozib ✨ ni bosing")
             return
         }
+        // A new ✨ starts plain; the tweaks belonged to the previous variants.
+        if !tweaks.isEmpty { tweaks = [] }
+        rewrite(original: original, replacingField: false)
+    }
+
+    /// qisqaroq / iliqroq / …: toggles the tweak and asks for the variants of the same draft again — the way the
+    /// user would say "biroz qisqaroq" to a chat model. A variant already in the field is swapped for the new
+    /// first one, so the request changes the text like it would in the chat.
+    func refine(_ tweak: RewriteTweak) {
+        guard let originalDraft else { return }
+        keyDown()
+        if let index = tweaks.firstIndex(of: tweak) { tweaks.remove(at: index) } else { tweaks.append(tweak) }
+        rewrite(original: originalDraft, replacingField: pickedVariantID != nil)
+    }
+
+    private func rewrite(original: String, replacingField: Bool) {
+        let draft = original.trimmingCharacters(in: .whitespacesAndNewlines)
         rewriteTask?.cancel()
         isRewriting = true
         let context = context
@@ -394,18 +415,25 @@ final class KeyboardModel {
         let notes = state.activeFriendRecord?.notes
         let style = state.translationStyle
         let quality = state.quality
+        let tweaks = tweaks
+        let examples = state.rememberedExamples
         rewriteTask = Task {
             defer { isRewriting = false }
             do {
                 let result = try await Signposts.measureAsync("rewrite") {
                     try await Translator.rewrite(
                         draft: draft, context: context, friend: friend, language: language,
-                        formality: formality, history: history, notes: notes, style: style, quality: quality)
+                        formality: formality, history: history, notes: notes, style: style, tweaks: tweaks,
+                        examples: examples, quality: quality)
                 }
                 guard !Task.isCancelled else { return }
                 variants = result
                 originalDraft = original
-                if pickedVariantID != nil { pickedVariantID = nil }
+                if replacingField, let first = result.first {
+                    pick(first)
+                } else if pickedVariantID != nil {
+                    pickedVariantID = nil
+                }
             } catch {
                 guard !Task.isCancelled else { return }
                 flash(error.localizedDescription)
@@ -418,6 +446,7 @@ final class KeyboardModel {
         replaceAllText(with: suggestion.text)
         // The screenshot replies always stayed on the row; now the ✨ variants do too.
         if !variants.isEmpty, pickedVariantID != suggestion.id { pickedVariantID = suggestion.id }
+        lastSeenText = suggestion.text
         closeVariantList()
     }
 
@@ -435,17 +464,35 @@ final class KeyboardModel {
         closeVariantListIfEmpty()
     }
 
-    /// The host app changed the text. A sent message empties the field, and the variants were for that message.
+    /// The host app changed the text. A sent message empties the field: the variants were for that message, and
+    /// what the user changed in the picked one before sending is worth remembering.
     func textChanged() {
-        guard !isReplacingText, !variants.isEmpty, currentText.isEmpty else { return }
+        guard !isReplacingText, !variants.isEmpty else { return }
+        let text = currentText
+        if !text.isEmpty {
+            if pickedVariantID != nil { lastSeenText = text }
+            return
+        }
+        learnFromSentMessage()
         clearVariants()
         closeVariantListIfEmpty()
+    }
+
+    private func learnFromSentMessage() {
+        guard let pickedVariantID, let picked = variants.first(where: { $0.id == pickedVariantID }),
+              let sent = lastSeenText, let originalDraft,
+              let example = EditLearning.example(draft: originalDraft, picked: picked.text, sent: sent)
+        else { return }
+        SharedStore.update { $0.learn(example) }
+        reloadState()
     }
 
     private func clearVariants() {
         if !variants.isEmpty { variants = [] }
         if originalDraft != nil { originalDraft = nil }
         if pickedVariantID != nil { pickedVariantID = nil }
+        if !tweaks.isEmpty { tweaks = [] }
+        lastSeenText = nil
     }
 
     func dismissContext() {
