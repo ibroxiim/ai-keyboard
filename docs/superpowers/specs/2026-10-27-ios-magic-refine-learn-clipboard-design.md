@@ -14,6 +14,12 @@ tuzatishlarini eslab qoladi. Klaviaturada ikkalasi ham yo'q edi. Uchinchisi — 
   qo'lla" qoidasi. Tanlangan variant emas, **asl qoralama** qayta yoziladi — ma'no yo'qolmasin.
 - Yangi variantlar kelganda tanlov belgisi tushadi; "↩︎ Asli" o'z joyida qoladi.
 
+- **Joylashuv (2026-10-28 tuzatish):** to'rtta tugma status qatoriga ✕, ⤢, 🎤, ✨ yonida sig'maydi (~211 pt joy,
+  ~280 pt kerak). Ular gorizontal suriladigan, **kesiladigan** qatorda, o'ng cheti so'nadi — kesilmagan holda
+  (`scrollClipDisabled`, chip qatoridan ko'chgan) tugmalar ✕ va ⤢ ustiga chiqib ketgan edi. Simulator'da
+  `tools/simulate-variants.sh` (Debug) bilan ko'rildi va tuzatildi. Boshqa variantlar (qilinmadi): tugmalarni chip
+  qatoriga ko'chirish; ✨ ni bosib turganda menyu.
+
 ## B. Tuzatishlardan o'rganish (`Friend.examples`)
 
 - Foydalanuvchi variantni tanlab, yuborishdan oldin qo'lda o'zgartirsa, maydon bo'shaganda (yuborildi) klaviatura

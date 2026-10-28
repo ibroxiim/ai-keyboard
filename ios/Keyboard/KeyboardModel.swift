@@ -503,6 +503,20 @@ final class KeyboardModel {
         }
     }
 
+    #if DEBUG
+    /// The Simulator has no Full Access, so ✨ cannot run there; this shows the bar as it looks after one.
+    func simulateVariants() {
+        originalDraft = "salom, ertaga ko'rishamizmi? soat 7 da kafe oldida kutaman"
+        variants = [
+            Suggestion(text: "hey, are we meeting tomorrow? I'll wait for you in front of the cafe at 7", uz: "salom, ertaga ko'rishamizmi? soat 7 da kafe oldida kutaman"),
+            Suggestion(text: "내일 볼까? 7시에 카페 앞에서 기다릴게", uz: "ertaga ko'rishamizmi? 7 da kafe oldida kutaman", read: "naeil bolkka? ilgopsie kape apeseo gidarilge"),
+            Suggestion(text: "tomorrow? cafe, 7pm 😊", uz: "ertaga? kafe, kechki 7 😊"),
+        ]
+        pickedVariantID = nil
+        tweaks = [.warmer]
+    }
+    #endif
+
     func pick(_ suggestion: Suggestion) {
         keyDown()
         replaceAllText(with: suggestion.text)

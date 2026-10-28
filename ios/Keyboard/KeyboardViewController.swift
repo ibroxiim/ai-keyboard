@@ -40,11 +40,15 @@ final class KeyboardViewController: UIInputViewController {
         simulatedBackTapObserver = DarwinObserver(name: AppGroup.simulatedBackTap) {
             Self.runSimulatedBackTap()
         }
+        simulatedVariantsObserver = DarwinObserver(name: AppGroup.simulatedVariants) { [weak self] in
+            self?.model.simulateVariants()
+        }
         #endif
     }
 
     #if DEBUG
     private var simulatedBackTapObserver: DarwinObserver?
+    private var simulatedVariantsObserver: DarwinObserver?
 
     /// The Simulator has no Back Tap and no Shortcuts app. `tools/simulate-back-tap.sh` drops a screenshot
     /// into the App Group and posts `AppGroup.simulatedBackTap`; this runs the same analysis the intent would.

@@ -10,6 +10,8 @@ enum AppGroup {
     static let diagnosticsChanged = "com.ibrokhim.dmtranslator.diagnosticsChanged"
     /// Debug builds only: `tools/simulate-back-tap.sh` stands in for Back Tap in the Simulator.
     static let simulatedBackTap = "com.ibrokhim.dmtranslator.debug.simulatedBackTap"
+    /// Debug builds only: `tools/simulate-variants.sh` puts ✨ variants on the bar without Full Access or Gemini.
+    static let simulatedVariants = "com.ibrokhim.dmtranslator.debug.simulatedVariants"
 }
 
 /// Everything the app and the keyboard share. Lives in one JSON file in the App Group container.

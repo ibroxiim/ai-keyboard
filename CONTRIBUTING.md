@@ -62,6 +62,10 @@ Klaviatura kengaytmasini sinashning o'z cheklovlari bor:
 - Simulatorda **Back Tap** ham, **Shortcuts** ilovasi ham yo'q. Debug build'da `ios/tools/simulate-back-tap.sh`
   uning o'rnini bosadi: klaviatura ekranda turganda ishga tushiring — simulator ekrani xuddi Back Tap'dagidek
   tahlil qilinadi. Yoki ilovadagi «DM skrinshotini tanlash» orqali sinang.
+- Simulator'da ✨ holatini ko'rish uchun (Full Access'siz ham) Debug build'da `ios/tools/simulate-variants.sh`:
+  klaviatura ekranda turganda ishga tushiring — uchta soxta variant, «↩︎ Asli» va bitta yoqilgan sozlash tugmasi
+  chiqadi. Simulator Sozlamalarida AI Keyboard'ni qo'shib Full Access'ni yoqish ham mumkin (Settings → General →
+  Keyboard → Keyboards) — shunda ✨ va 📋 haqiqiy Gemini bilan ishlaydi.
 - **Unit testlar** (teginish mantig'i, muddatlar, diagnostika):
   `cd ios && xcodegen generate && xcodebuild test -project AIKeyboard.xcodeproj -scheme Tarjimon -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:AIKeyboardTests`
 - **Diagnostika**: ilovada Diagnostika → yoqing. Klaviatura har ochilishida qisqa hisobot yozadi (teginishlar,

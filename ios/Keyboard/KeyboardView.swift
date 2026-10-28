@@ -135,17 +135,26 @@ struct SuggestionBar: View {
             voiceStatusView
         } else if !model.variants.isEmpty {
             // "Biroz qisqaroq" — asked of the variants with one tap, the way it would be asked of a chat model.
+            // The pills are wider than the row next to the buttons, so they scroll; clipped, unlike the chip
+            // row — unclipped they were drawn over the ✕ and the buttons.
             HStack(spacing: 6) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 5) {
-                        Text("✨").font(.system(size: 13))
                         ForEach(RewriteTweak.allCases, id: \.self) { tweak in
                             TweakPill(tweak: tweak, isOn: model.tweaks.contains(tweak)) { model.refine(tweak) }
                         }
                     }
+                    .padding(.horizontal, 2)
                 }
-                .scrollClipDisabled()
                 .modifier(NoScrollEdgeEffect())
+                .mask(
+                    // Fade the right edge so a cut pill reads as "more", not as a bug.
+                    HStack(spacing: 0) {
+                        Rectangle()
+                        LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                            .frame(width: 14)
+                    }
+                )
                 closeButton { model.dismissVariants() }
             }
         } else if let context = model.context {
