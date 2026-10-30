@@ -1,7 +1,9 @@
 package com.ibrokhim.aikeyboard.ime.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,11 +27,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ibrokhim.aikeyboard.data.Languages
+import com.ibrokhim.aikeyboard.data.RewriteTweak
 import com.ibrokhim.aikeyboard.data.Suggestion
 import com.ibrokhim.aikeyboard.ime.KeyboardAi
 import com.ibrokhim.aikeyboard.ime.KeyboardTheme
@@ -56,6 +60,10 @@ fun SuggestionBar(model: BarModel, theme: KeyboardTheme, ai: KeyboardAi, onRead:
         Row(Modifier.fillMaxWidth().height(36.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { StatusRow(model.status, colors, ai, onRead) }
             Spacer(Modifier.width(8.dp))
+            if (model.canExpand) {
+                RoundButton("⤢", colors) { ai.openVariants() }
+                Spacer(Modifier.width(8.dp))
+            }
             MagicButton(model.rewriting, colors) { ai.magic() }
         }
         if (model.expanded) {
@@ -78,8 +86,15 @@ private fun StatusRow(status: Status, colors: BarColors, ai: KeyboardAi, onRead:
             )
             Close(colors) { ai.dismissContext() }
         }
-        Status.Variants -> Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("✨ Variantlar — birini tanlang", color = colors.ink, fontSize = 13.sp, modifier = Modifier.weight(1f))
+        // "Biroz qisqaroq" — asked of the variants with one tap, the way it would be asked of a chat model.
+        // The pills are wider than the row, so they scroll (and clip) next to the ✕.
+        is Status.Variants -> Row(verticalAlignment = Alignment.CenterVertically) {
+            LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                items(RewriteTweak.entries) { tweak ->
+                    TweakPill(tweak.label, tweak in status.tweaks, colors) { ai.refine(tweak) }
+                }
+            }
+            Spacer(Modifier.width(6.dp))
             Close(colors) { ai.dismissVariants() }
         }
         is Status.Failed -> Row(verticalAlignment = Alignment.CenterVertically) {
@@ -89,9 +104,11 @@ private fun StatusRow(status: Status, colors: BarColors, ai: KeyboardAi, onRead:
             )
             Pill("📖 Qayta", colors, accent = true, onClick = onRead)
         }
-        is Status.Idle -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Pill("📖 Chatni o'qish", colors, accent = true, onClick = onRead)
-            Pill(status.target + " ▾", colors, accent = false) { ai.togglePicker() }
+        is Status.Idle -> LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            item { Pill("📖 Chatni o'qish", colors, accent = true, onClick = onRead) }
+            item { Pill(status.target + " ▾", colors, accent = false) { ai.togglePicker() } }
+            // Something was copied since the keyboard last looked: a message in the chat, most likely.
+            if (status.clipboard) item { Pill("📋 Tarjima", colors, accent = false) { ai.translateClipboard() } }
         }
     }
 }
@@ -102,7 +119,13 @@ private fun ChipRow(chips: Chips, colors: BarColors, ai: KeyboardAi) {
         Chips.None -> Unit
         Chips.Preparing -> Busy("Javoblar tayyorlanmoqda…", colors)
         is Chips.Replies -> LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(chips.items) { suggestion -> ReplyChip(suggestion, colors) { ai.pick(suggestion) } }
+            chips.original?.let { original ->
+                item { OriginalChip(original, selected = chips.picked == null, colors) { ai.restoreOriginal() } }
+            }
+            items(chips.items) { suggestion ->
+                ReplyChip(suggestion, selected = chips.picked == suggestion.text, colors,
+                    onClick = { ai.pick(suggestion) }, onLongClick = { ai.openVariants(suggestion) })
+            }
         }
         is Chips.Picker -> LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -118,15 +141,18 @@ private fun ChipRow(chips: Chips, colors: BarColors, ai: KeyboardAi) {
     }
 }
 
+/** Tap puts the reply in; a long press shows every reply in full (a chip cuts them at two lines). */
 @Composable
-private fun ReplyChip(suggestion: Suggestion, colors: BarColors, onClick: () -> Unit) {
+private fun ReplyChip(suggestion: Suggestion, selected: Boolean, colors: BarColors, onClick: () -> Unit, onLongClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
     Column(
         Modifier
             .fillMaxHeight()
             .widthIn(max = 250.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(shape)
             .background(colors.chip)
-            .clickable(onClick = onClick)
+            .border(2.dp, if (selected) colors.accent else Color.Transparent, shape)
+            .pointerInput(suggestion) { detectTapGestures(onTap = { onClick() }, onLongPress = { onLongClick() }) }
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.Center,
     ) {
@@ -134,7 +160,46 @@ private fun ReplyChip(suggestion: Suggestion, colors: BarColors, onClick: () -> 
             suggestion.text, color = colors.ink, fontSize = 14.sp, lineHeight = 17.sp,
             fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis,
         )
-        Text(suggestion.uz, color = colors.muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        // The reading first, for a script the user cannot read, then the meaning.
+        Text(
+            listOfNotNull(suggestion.read, suggestion.uz).joinToString(" · "),
+            color = colors.muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** Puts back what the user had typed before ✨, so a picked variant is not a one-way door. */
+@Composable
+private fun OriginalChip(draft: String, selected: Boolean, colors: BarColors, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    Column(
+        Modifier
+            .fillMaxHeight()
+            .widthIn(max = 170.dp)
+            .clip(shape)
+            .background(colors.chip)
+            .border(2.dp, if (selected) colors.accent else Color.Transparent, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text("↩︎ Asli", color = colors.ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Text(draft, color = colors.muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun TweakPill(text: String, on: Boolean, colors: BarColors, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .height(28.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (on) colors.accent else colors.chip)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, color = if (on) colors.onAccent else colors.ink, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
     }
 }
 
@@ -171,6 +236,16 @@ private fun MagicButton(rewriting: Boolean, colors: BarColors, onClick: () -> Un
         } else {
             Text("✨", fontSize = 16.sp)
         }
+    }
+}
+
+@Composable
+private fun RoundButton(text: String, colors: BarColors, onClick: () -> Unit) {
+    Box(
+        Modifier.size(32.dp).clip(CircleShape).background(colors.chip).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, color = colors.ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

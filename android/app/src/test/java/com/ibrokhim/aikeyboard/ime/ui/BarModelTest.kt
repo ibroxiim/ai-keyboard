@@ -2,6 +2,7 @@ package com.ibrokhim.aikeyboard.ime.ui
 
 import com.ibrokhim.aikeyboard.data.ChatAnalysis
 import com.ibrokhim.aikeyboard.data.Friend
+import com.ibrokhim.aikeyboard.data.RewriteTweak
 import com.ibrokhim.aikeyboard.data.SharedState
 import com.ibrokhim.aikeyboard.data.Suggestion
 import com.ibrokhim.aikeyboard.ime.AiUiState
@@ -43,7 +44,7 @@ class BarModelTest {
     @Test fun variantsAndNoticesTakeOver() {
         val variants = listOf(Suggestion("we're getting plov on saturday", "Shanba kuni osh yeymiz"))
         val withVariants = barModel(SharedState(), AiUiState(variants = variants), now)
-        assertEquals(Status.Variants, withVariants.status)
+        assertEquals(Status.Variants(), withVariants.status)
         assertEquals(Chips.Replies(variants), withVariants.chips)
         assertEquals(Status.Notice("x"), barModel(SharedState(), AiUiState(notice = "x", variants = variants), now).status)
     }
@@ -69,5 +70,26 @@ class BarModelTest {
 
     @Test fun rewritingSpinsTheMagicButton() {
         assertTrue(barModel(SharedState(), AiUiState(rewriting = true), now).rewriting)
+    }
+
+    @Test fun variantsCarryTweaksThePickedOneAndTheOriginal() {
+        val variants = listOf(Suggestion("hey", "salom"), Suggestion("hi", "salom"))
+        val ui = AiUiState(variants = variants, originalDraft = "salom", picked = "hi", tweaks = listOf(RewriteTweak.SHORTER))
+        val model = barModel(SharedState(), ui, now)
+        assertEquals(Status.Variants(listOf(RewriteTweak.SHORTER), picked = true), model.status)
+        assertEquals(Chips.Replies(variants, "salom", "hi"), model.chips)
+        assertTrue(model.canExpand)
+        assertFalse(barModel(SharedState(), idle, now).canExpand)
+    }
+
+    @Test fun idleOffersTheClipboardAndThePickerUsesTheOwnLanguageList() {
+        val state = SharedState(targetLanguage = "English", languages = listOf("English", "Thai"))
+        assertEquals(Status.Idle("✨ → 🇬🇧 English", clipboard = true), barModel(state, AiUiState(clipboardOffered = true), now).status)
+        assertEquals(Chips.Picker(emptyList(), listOf("Thai")), barModel(state, AiUiState(pickerOpen = true), now).chips)
+    }
+
+    @Test fun aMultiLineTranslationBecomesOneLineOnTheBar() {
+        val context = ChatAnalysis(partner = "Emma", lastIncomingUz = "Qalaysan?\n\nErtaga ko'rishamizmi?")
+        assertEquals(Status.Translation("Emma", "Qalaysan? · Ertaga ko'rishamizmi?"), barModel(SharedState(context = context, contextDate = now), idle, now).status)
     }
 }

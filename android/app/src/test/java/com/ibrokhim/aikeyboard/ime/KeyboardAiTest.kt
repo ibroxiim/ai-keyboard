@@ -9,6 +9,7 @@ import com.ibrokhim.aikeyboard.ai.Part
 import com.ibrokhim.aikeyboard.ai.Translator
 import com.ibrokhim.aikeyboard.data.ChatAnalysis
 import com.ibrokhim.aikeyboard.data.Friend
+import com.ibrokhim.aikeyboard.data.RewriteTweak
 import com.ibrokhim.aikeyboard.data.SharedStore
 import com.ibrokhim.aikeyboard.data.Suggestion
 import java.io.File
@@ -58,9 +59,13 @@ class KeyboardAiTest {
 
     private class Llm : LlmClient {
         var calls = 0
+        val inputs = mutableListOf<String>()
         override suspend fun generate(system: String, parts: List<Part>, schema: JsonObject, quality: GeminiQuality): String {
             calls++
+            inputs.add(parts.filterIsInstance<Part.Text>().joinToString("\n") { it.text })
             return when {
+                system.contains("copied from the other person") ->
+                    """{"language":"English","tone":"casual","last_incoming_uz":"Bo'shmisan?","summary_uz":"x","suggestions":[{"text":"yes!","uz":"ha!"}]}"""
                 system.contains("- partner:") ->
                     """{"partner":"Emma","language":"English","tone":"casual","last_incoming_uz":"Bo'shmisan?"}"""
                 system.contains("- suggestions:") ->
@@ -126,7 +131,13 @@ class KeyboardAiTest {
         assertFalse(ai.ui.value.rewriting)
         ai.pick(ai.ui.value.variants.single())
         assertEquals("we're getting plov on saturday", field.text.toString())
-        assertEquals(emptyList<Suggestion>(), ai.ui.value.variants)
+        // The variants stay, with the picked one lit, so another one or the draft can be put back.
+        assertEquals(1, ai.ui.value.variants.size)
+        assertEquals("we're getting plov on saturday", ai.ui.value.picked)
+        assertEquals("shanba kuni plov yeymiz", ai.ui.value.originalDraft)
+        ai.restoreOriginal()
+        assertEquals("shanba kuni plov yeymiz", field.text.toString())
+        assertNull(ai.ui.value.picked)
     }
 
     @Test fun pickerSelectionsSetTheTarget() = runTest {
@@ -182,5 +193,88 @@ class KeyboardAiTest {
         advanceUntilIdle()
         assertEquals(emptyList<Pair<String, Boolean>>(), source.asked)
         assertEquals(0, llm.calls)
+    }
+
+    private class Clip(private var stamp: Long?, private val text: String?) : ClipboardSource {
+        override var seen = 0L
+        override fun stamp() = stamp
+        override fun text() = text
+    }
+
+    private fun TestScope.aiWith(clip: ClipboardSource): Pair<KeyboardAi, SharedStore> {
+        val store = SharedStore(folder.newFile("state.json"))
+        val translator = Translator(llm)
+        val analysis = ChatAnalysisService(store, translator) { 1_000 }
+        return KeyboardAi(store, translator, analysis, field, source, this, { 1_000 }, clip) to store
+    }
+
+    @Test fun refineAsksAgainWithAnAdjustLineAndSwapsThePickedVariant() = runTest {
+        val (ai, _) = ai()
+        field.replaceAll("shanba kuni plov yeymiz")
+        ai.magic(); advanceUntilIdle()
+        ai.pick(ai.ui.value.variants.first())
+        ai.refine(RewriteTweak.SHORTER); advanceUntilIdle()
+        assertEquals(listOf(RewriteTweak.SHORTER), ai.ui.value.tweaks)
+        assertTrue(llm.inputs.last().contains("Adjust: shorter"))
+        assertTrue(llm.inputs.last().endsWith("Draft:\nshanba kuni plov yeymiz"))
+        assertEquals("we're getting plov on saturday", ai.ui.value.picked)
+        ai.refine(RewriteTweak.SHORTER); advanceUntilIdle()
+        assertEquals(emptyList<RewriteTweak>(), ai.ui.value.tweaks)
+        ai.magic(); advanceUntilIdle()
+        assertNull(ai.ui.value.picked)
+    }
+
+    @Test fun aSentMessageClearsTheVariantsAndTeachesTheEdit() = runTest {
+        val (ai, store) = ai()
+        store.update { it.copy(friends = listOf(Friend("Emma", "English", "casual", 0)), activeFriend = "Emma") }
+        field.replaceAll("shanba kuni plov yeymiz")
+        ai.magic(); advanceUntilIdle()
+        ai.pick(ai.ui.value.variants.first())
+        field.replaceAll("we're getting plov on saturday 😄 you in?")
+        ai.textChanged()
+        assertEquals(1, ai.ui.value.variants.size)
+        field.replaceAll("")
+        ai.textChanged()
+        assertEquals(emptyList<Suggestion>(), ai.ui.value.variants)
+        assertNull(ai.ui.value.originalDraft)
+        val example = store.value.friends.first().examples?.single()
+        assertEquals(Friend.Example("shanba kuni plov yeymiz", "we're getting plov on saturday", "we're getting plov on saturday 😄 you in?"), example)
+    }
+
+    @Test fun anUnchangedVariantTeachesNothing() = runTest {
+        val (ai, store) = ai()
+        store.update { it.copy(friends = listOf(Friend("Emma", "English", "casual", 0)), activeFriend = "Emma") }
+        field.replaceAll("salom")
+        ai.magic(); advanceUntilIdle()
+        ai.pick(ai.ui.value.variants.first())
+        field.replaceAll("")
+        ai.textChanged()
+        assertNull(store.value.friends.first().examples)
+    }
+
+    @Test fun clipboardIsOfferedOnceAndTranslatedLikeAChat() = runTest {
+        val clip = Clip(stamp = 42, text = "u free tonight?")
+        val (ai, store) = aiWith(clip)
+        store.update { it.copy(friends = listOf(Friend("Emma", "English", "casual", 0)), activeFriend = "Emma") }
+        ai.checkClipboard(force = true)
+        assertTrue(ai.ui.value.clipboardOffered)
+        ai.translateClipboard(); advanceUntilIdle()
+        assertFalse(ai.ui.value.clipboardOffered)
+        assertEquals(42L, clip.seen)
+        assertEquals("Bo'shmisan?", store.value.context?.lastIncomingUz)
+        assertEquals("Emma", store.value.context?.partner)
+        assertEquals(listOf("u free tonight?"), store.value.friends.first().history?.map { it.text })
+        assertTrue(llm.inputs.last().contains("Copied text:\nu free tonight?"))
+        ai.checkClipboard(force = true)
+        assertFalse(ai.ui.value.clipboardOffered)
+    }
+
+    @Test fun anEmptyClipboardSaysSo() = runTest {
+        val (ai, store) = aiWith(Clip(stamp = 7, text = " "))
+        ai.translateClipboard()
+        assertEquals(Notices.CLIPBOARD_EMPTY, ai.ui.value.notice)
+        advanceUntilIdle()
+        assertNull(ai.ui.value.notice)
+        assertNull(store.value.context)
     }
 }

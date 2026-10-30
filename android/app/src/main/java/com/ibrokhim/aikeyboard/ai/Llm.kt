@@ -49,3 +49,7 @@ internal inline fun <T> runCatchingNonCancel(block: () -> T): Result<T> = try {
 } catch (e: Exception) {
     Result.failure(e)
 }
+
+/** The user's "Sifatli tarjima" setting. */
+val com.ibrokhim.aikeyboard.data.SharedState.quality: GeminiQuality
+    get() = if (qualityMode) GeminiQuality.CAREFUL else GeminiQuality.FAST

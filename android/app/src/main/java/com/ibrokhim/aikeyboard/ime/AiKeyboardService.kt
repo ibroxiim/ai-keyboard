@@ -1,5 +1,7 @@
 package com.ibrokhim.aikeyboard.ime
 
+import android.content.ClipDescription
+import android.content.ClipboardManager
 import android.content.Intent
 import android.inputmethodservice.InputMethodService
 import android.os.Build
@@ -34,6 +36,7 @@ import com.ibrokhim.aikeyboard.ai.Translator
 import com.ibrokhim.aikeyboard.data.ApiKeyStore
 import com.ibrokhim.aikeyboard.data.SharedStore
 import com.ibrokhim.aikeyboard.ime.ui.ContextDetails
+import com.ibrokhim.aikeyboard.ime.ui.VariantList
 import com.ibrokhim.aikeyboard.ime.ui.EmojiPanel
 import com.ibrokhim.aikeyboard.ime.ui.SuggestionBar
 import com.ibrokhim.aikeyboard.ime.ui.barModel
@@ -54,7 +57,7 @@ class AiKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegist
     override val savedStateRegistry: SavedStateRegistry get() = savedStateController.savedStateRegistry
 
     /** What sits where the keys are. */
-    private enum class LowerArea { KEYS, EMOJI, DETAILS }
+    private enum class LowerArea { KEYS, EMOJI, DETAILS, VARIANTS }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val prefs by lazy { getSharedPreferences("keyboard", MODE_PRIVATE) }
@@ -175,7 +178,7 @@ class AiKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegist
         val translator = Translator(GeminiClient(OkHttpGeminiTransport(), { apiKeys.effectiveKey() }))
         ai = KeyboardAi(
             store, translator, ChatAnalysisService(store, translator), target, AccessibilityChatSource(), scope,
-            openReaderSetup = ::openReaderSettings,
+            clipboard = SystemClipboard(), openReaderSetup = ::openReaderSettings,
         )
         barTheme.value = KeyboardTheme.from(this)
 
@@ -230,6 +233,23 @@ class AiKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegist
                     LowerArea.DETAILS -> shared.freshContext(System.currentTimeMillis())?.let { context ->
                         ContextDetails(context, current, inset) { ai.closeDetails() }
                     }
+                    LowerArea.VARIANTS -> {
+                        val ui by ai.ui.collectAsState()
+                        val own = ui.variants.isNotEmpty()
+                        val items = if (own) ui.variants else shared.freshContext(System.currentTimeMillis())?.suggestions.orEmpty()
+                        VariantList(
+                            title = if (own) "✨ Variantlar" else "Tayyor javoblar",
+                            items = items,
+                            original = if (own) ui.originalDraft else null,
+                            picked = ui.picked,
+                            focus = ui.variantsFocus,
+                            theme = current,
+                            bottomInset = inset,
+                            onPick = { ai.pick(it) },
+                            onRestore = { ai.restoreOriginal() },
+                            onClose = { ai.closeVariants() },
+                        )
+                    }
                 }
             }
         }.also { panelView = it }
@@ -264,9 +284,13 @@ class AiKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegist
     }
 
     private fun updateLowerArea() {
-        val details = ai.ui.value.detailsOpen && store.value.freshContext(System.currentTimeMillis()) != null
+        val ui = ai.ui.value
+        val context = store.value.freshContext(System.currentTimeMillis())
+        val details = ui.detailsOpen && context != null
+        val variants = ui.variantsOpen && (ui.variants.isNotEmpty() || context?.suggestions?.isNotEmpty() == true)
         val area = when {
             details -> LowerArea.DETAILS
+            variants -> LowerArea.VARIANTS
             controller.showsEmoji -> LowerArea.EMOJI
             else -> LowerArea.KEYS
         }
@@ -290,6 +314,8 @@ class AiKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegist
         }
         controller.closeEmoji()
         ai.closeDetails()
+        ai.closeVariants()
+        ai.checkClipboard(force = true)
         controller.setLayer(Layer.LETTERS)
         controller.autoCapitalize()
         keysView?.invalidate()
@@ -310,6 +336,7 @@ class AiKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegist
         candidatesEnd: Int,
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        ai.textChanged()
         controller.autoCapitalize()
     }
 
@@ -317,6 +344,29 @@ class AiKeyboardService : InputMethodService(), LifecycleOwner, SavedStateRegist
         scope.cancel()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         super.onDestroy()
+    }
+
+    /**
+     * The default keyboard may read the clipboard while it has focus; reading the text is what shows the user
+     * "AI Keyboard pasted from your clipboard", looking at the description is not.
+     */
+    private inner class SystemClipboard : ClipboardSource {
+        private val manager: ClipboardManager? get() = getSystemService(ClipboardManager::class.java)
+
+        override fun stamp(): Long? {
+            val manager = manager ?: return null
+            if (!manager.hasPrimaryClip()) return null
+            val description = manager.primaryClipDescription ?: return null
+            val text = description.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN) ||
+                description.hasMimeType(ClipDescription.MIMETYPE_TEXT_HTML)
+            return if (text) description.timestamp else null
+        }
+
+        override fun text(): CharSequence? = manager?.primaryClip?.getItemAt(0)?.coerceToText(this@AiKeyboardService)
+
+        override var seen: Long
+            get() = prefs.getLong("clipboardSeen", 0)
+            set(value) = prefs.edit().putLong("clipboardSeen", value).apply()
     }
 
     private fun openReaderSettings() {

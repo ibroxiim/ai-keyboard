@@ -15,8 +15,7 @@ class ChatAnalysisService(
         store.update { it.copy(analyzingSince = clock(), context = null, contextDate = null) }
         try {
             val settings = store.value
-            val quality = if (settings.qualityMode) GeminiQuality.CAREFUL else GeminiQuality.FAST
-            val result = translator.analyze(input, settings.friends, settings.translationStyle, quality) { quick ->
+            val result = translator.analyze(input, settings.friends, settings.translationStyle, settings.quality) { quick ->
                 // The keyboard shows the translation now; suggestions follow when the second call lands.
                 store.update { it.copy(context = ChatAnalysis.of(quick, null), contextDate = clock()) }
             }
