@@ -3,6 +3,7 @@ package com.ibrokhim.aikeyboard.ime
 import android.text.InputType
 import com.ibrokhim.aikeyboard.ai.ChatAnalysisService
 import com.ibrokhim.aikeyboard.ai.ChatInput
+import com.ibrokhim.aikeyboard.ai.GeminiQuality
 import com.ibrokhim.aikeyboard.ai.LlmClient
 import com.ibrokhim.aikeyboard.ai.Part
 import com.ibrokhim.aikeyboard.ai.Translator
@@ -57,7 +58,7 @@ class KeyboardAiTest {
 
     private class Llm : LlmClient {
         var calls = 0
-        override suspend fun generate(system: String, parts: List<Part>, schema: JsonObject): String {
+        override suspend fun generate(system: String, parts: List<Part>, schema: JsonObject, quality: GeminiQuality): String {
             calls++
             return when {
                 system.contains("- partner:") ->

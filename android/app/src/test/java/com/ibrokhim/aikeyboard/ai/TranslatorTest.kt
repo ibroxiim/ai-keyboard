@@ -15,7 +15,7 @@ import org.junit.Test
 class TranslatorTest {
     private class FakeLlm(private val answer: (system: String) -> String) : LlmClient {
         val calls = mutableListOf<Pair<String, List<Part>>>()
-        override suspend fun generate(system: String, parts: List<Part>, schema: JsonObject): String {
+        override suspend fun generate(system: String, parts: List<Part>, schema: JsonObject, quality: GeminiQuality): String {
             calls.add(system to parts)
             return answer(system)
         }
@@ -29,10 +29,12 @@ class TranslatorTest {
 
     private val transcript = ChatInput.Transcript(listOf("[TOP] Emma", "[L] u free?", "[R] maybe"))
 
+    private fun friends(vararg names: String) = names.map { Friend(it, "English", "casual", 0) }
+
     @Test fun analyzeMergesBothHalvesAndShowsTheQuickOneFirst() = runTest {
         val llm = FakeLlm { if (isQuick(it)) quick else details }
         val seen = mutableListOf<String>()
-        val result = Translator(llm).analyze(transcript, listOf("Emma")) { seen.add(it.partner) }
+        val result = Translator(llm).analyze(transcript, friends("Emma")) { seen.add(it.partner) }
         assertEquals(listOf("Emma"), seen)
         assertEquals("Emma", result.analysis.partner)
         assertEquals("yes!", result.analysis.suggestions.single().text)
@@ -41,7 +43,7 @@ class TranslatorTest {
 
     @Test fun transcriptUsesTheTextPromptAndKnownFriendsGoFirst() = runTest {
         val llm = FakeLlm { if (isQuick(it)) quick else details }
-        Translator(llm).analyze(transcript, listOf("Emma", "Minji")) {}
+        Translator(llm).analyze(transcript, friends("Emma", "Minji")) {}
         val (system, parts) = llm.calls.first { isQuick(it.first) }
         assertTrue(system.contains("[R]"))
         assertEquals(Part.Text("Known friends: Emma, Minji"), parts[0])

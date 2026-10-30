@@ -5,6 +5,7 @@ import java.util.Base64
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
@@ -42,38 +43,75 @@ interface GeminiTransport {
 }
 
 /**
- * Gemini with a hedge: the lite model answers in ~2 s but now and then takes 20–50 s, so if it has not
- * answered after [hedgeAfterMs] the bigger model is asked in parallel and the first answer wins.
- * A failure worth retrying falls back at once. (The iOS client waits out a 30 s timeout instead.)
+ * Gemini with a hedge: the first model answers in ~2 s but now and then takes 20–50 s, so if it has not answered
+ * after the hedge delay the next model is asked in parallel, and so on down the chain; the first answer wins and
+ * the rest are cancelled. A failure worth retrying starts the next model at once. Which model is fast or down
+ * changes day to day, so the chain is four long (see [GeminiQuality.models]).
  */
 class GeminiClient(
     private val transport: GeminiTransport,
     private val apiKey: () -> String,
-    private val models: List<String> = MODELS,
+    private val models: List<String>? = null,
     private val hedgeAfterMs: Long = 5_000,
     private val attemptTimeoutMs: Long = 30_000,
 ) : LlmClient {
 
-    override suspend fun generate(system: String, parts: List<Part>, schema: JsonObject): String {
+    override suspend fun generate(system: String, parts: List<Part>, schema: JsonObject, quality: GeminiQuality): String {
         val key = apiKey()
         if (key.isBlank()) throw GeminiException.MissingKey()
-        val body = requestBody(system, parts, schema)
+        val body = requestBody(system, parts, schema, quality.thinkingLevel)
+        val chain = models ?: quality.models
+        // A screenshot takes longer to read than a rewrite, so it gets more time before paying for a second request.
+        val media = parts.any { it is Part.Jpeg }
+        val hedgeMs = (hedgeAfterMs * (if (media) 1.5 else 1.0) * quality.patience).toLong()
+        val timeoutMs = (attemptTimeoutMs * quality.patience).toLong()
         return coroutineScope {
-            val primary = async { attempt(models[0], key, body) }
-            val early = withTimeoutOrNull(hedgeAfterMs) { primary.await() }
-            val error = early?.exceptionOrNull()
-            when {
-                early == null -> race(primary, async { attempt(models[1], key, body) })
-                error == null -> early.getOrThrow()
-                error is GeminiException && error.retriable -> attempt(models[1], key, body).getOrThrow()
-                else -> throw error
+            val running = mutableListOf<Deferred<Result<String>>>()
+            var next = 0
+            fun launchNext(): Boolean {
+                if (next >= chain.size) return false
+                running += async { attempt(chain[next++], key, body, timeoutMs) }
+                return true
             }
+            launchNext()
+            var timer: Deferred<Unit>? = async { delay(hedgeMs) }
+            while (true) {
+                val finished = select<Pair<Deferred<Result<String>>, Result<String>>?> {
+                    running.forEach { job -> job.onAwait { job to it } }
+                    timer?.onAwait { null }
+                }
+                if (finished == null) {
+                    // Quiet too long: ask the next model alongside, and start the clock for the one after.
+                    timer = if (launchNext()) async { delay(hedgeMs) } else null
+                    continue
+                }
+                running.remove(finished.first)
+                val result = finished.second
+                if (result.isSuccess) {
+                    running.forEach { it.cancel() }
+                    timer?.cancel()
+                    return@coroutineScope result.getOrThrow()
+                }
+                val error = result.exceptionOrNull()!!
+                if (error is GeminiException && error.retriable) {
+                    if (!launchNext() && running.isEmpty()) {
+                        timer?.cancel()
+                        throw error
+                    }
+                    continue
+                }
+                running.forEach { it.cancel() }
+                timer?.cancel()
+                throw error
+            }
+            @Suppress("UNREACHABLE_CODE")
+            error("unreachable")
         }
     }
 
-    private suspend fun attempt(model: String, key: String, body: String): Result<String> {
+    private suspend fun attempt(model: String, key: String, body: String, timeoutMs: Long): Result<String> {
         val response = try {
-            withTimeoutOrNull(attemptTimeoutMs) { transport.post(model, key, body) }
+            withTimeoutOrNull(timeoutMs) { transport.post(model, key, body) }
                 ?: return Result.failure(GeminiException.Timeout())
         } catch (e: IOException) {
             return Result.failure(GeminiException.Network(e))
@@ -85,19 +123,9 @@ class GeminiClient(
         }
     }
 
-    private suspend fun race(a: Deferred<Result<String>>, b: Deferred<Result<String>>): String {
-        val (first, other) = select<Pair<Result<String>, Deferred<Result<String>>>> {
-            a.onAwait { it to b }
-            b.onAwait { it to a }
-        }
-        if (first.isSuccess) {
-            other.cancel()
-            return first.getOrThrow()
-        }
-        return other.await().getOrThrow()
-    }
-
-    internal fun requestBody(system: String, parts: List<Part>, schema: JsonObject): String = buildJsonObject {
+    internal fun requestBody(
+        system: String, parts: List<Part>, schema: JsonObject, thinkingLevel: String = "minimal",
+    ): String = buildJsonObject {
         putJsonObject("systemInstruction") {
             putJsonArray("parts") { addJsonObject { put("text", system) } }
         }
@@ -122,7 +150,7 @@ class GeminiClient(
         putJsonObject("generationConfig") {
             put("responseMimeType", "application/json")
             put("responseSchema", schema)
-            putJsonObject("thinkingConfig") { put("thinkingLevel", "minimal") }
+            putJsonObject("thinkingConfig") { put("thinkingLevel", thinkingLevel) }
         }
     }.toString()
 
@@ -143,6 +171,7 @@ class GeminiClient(
     }
 
     companion object {
-        val MODELS = listOf("gemini-3.5-flash-lite", "gemini-3.5-flash")
+        /** The everyday chain; see [GeminiQuality.models]. */
+        val MODELS: List<String> get() = GeminiQuality.FAST.models
     }
 }

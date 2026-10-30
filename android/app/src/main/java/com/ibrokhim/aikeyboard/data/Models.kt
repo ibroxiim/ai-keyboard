@@ -8,6 +8,11 @@ data class Suggestion(
     val text: String,
     /** What `text` means in Uzbek, so the user knows exactly what they send. */
     val uz: String,
+    /**
+     * How `text` is read, in Latin letters, when its script is not one the user reads (Korean, Japanese,
+     * Chinese, Arabic…); null for Latin and Cyrillic.
+     */
+    val read: String? = null,
 )
 
 @Serializable
@@ -62,3 +67,37 @@ data class ChatDetails(
     val transcript: List<ChatLine>,
     val suggestions: List<Suggestion>,
 )
+
+/**
+ * 📋 — a message the user copied in the DM app, translated without reading the screen: the text is exact and
+ * one small request does the whole job. The quick and the detailed halves in one.
+ */
+@Serializable
+data class ClipboardRead(
+    val language: String,
+    val tone: String,
+    @SerialName("last_incoming_uz") val lastIncomingUz: String,
+    @SerialName("summary_uz") val summaryUz: String,
+    val suggestions: List<Suggestion>,
+) {
+    /** As the keyboard, the app and the friend memory already understand it. [partner] is the active friend, if any. */
+    fun analysis(partner: String, text: String): ChatAnalysis {
+        val lines = text.lines().map { it.trim() }.filter { it.isNotEmpty() }.map { ChatLine("them", it) }
+        return ChatAnalysis(
+            partner = partner, language = language, tone = tone, lastIncomingUz = lastIncomingUz,
+            summaryUz = summaryUz, transcript = lines, suggestions = suggestions,
+        )
+    }
+}
+
+object ClipboardOffer {
+    /** Longest copied text that is sent; a copied article is not a DM. */
+    const val TEXT_LIMIT = 3000
+
+    /** The copied text as it goes to the model, or null when there is nothing worth translating. */
+    fun usable(text: CharSequence?): String? {
+        val trimmed = text?.toString()?.trim().orEmpty()
+        if (trimmed.length < 2) return null
+        return trimmed.take(TEXT_LIMIT)
+    }
+}

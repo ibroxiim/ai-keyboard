@@ -20,7 +20,7 @@ class ChatAnalysisServiceTest {
         """"suggestions":[{"text":"yes!","uz":"ha!"}]}"""
 
     private class Llm(private val answer: (String) -> String) : LlmClient {
-        override suspend fun generate(system: String, parts: List<Part>, schema: JsonObject) = answer(system)
+        override suspend fun generate(system: String, parts: List<Part>, schema: JsonObject, quality: GeminiQuality) = answer(system)
     }
 
     private fun store() = SharedStore(File(folder.root, "state.json"))
