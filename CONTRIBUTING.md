@@ -49,7 +49,10 @@ LIVE_GEMINI=1 ./gradlew :app:testDebugUnitTest --tests '*GeminiLiveTest'   # haq
 ```
 
 Emulyatorda: `adb shell ime enable/set com.ibrokhim.aikeyboard/.ime.AiKeyboardService`, ilovadagi "Demo chat"da
-📖 ni sinang. Debug build `AIKeys` logcat tegida tugma koordinatalarini yozadi — `android/tools/adb-type.py "matn"`
+📖 ni sinang. Android klaviaturasi iOS bilan bir xil AI imkoniyatlarga ega (tarjima qoidalari, ✨ sozlash tugmalari,
+«↩︎ Asli», 📋 nusxadan tarjima, do'st ko'rsatmasi va xotirasi, o'qilish) — prompt va ma'lumot mantig'i ikki tomonda
+qo'lda bir xil saqlanadi: `ios/Shared/Prompts.swift` ↔ `android/.../ai/Prompts.kt`. Birini o'zgartirsangiz,
+ikkinchisini ham o'zgartiring. Debug build `AIKeys` logcat tegida tugma koordinatalarini yozadi — `android/tools/adb-type.py "matn"`
 ular orqali matnni tugmalar bilan yozadi. Kod va testlarda faqat to'qima ismlar va suhbatlar.
 
 ## Sinash

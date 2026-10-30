@@ -201,3 +201,22 @@ rangi faqat ✨ tugmasi, faol chiplar va 📖 da. Dinamik rang (wallpaper) ishla
 
 - Google Play build: MediaProjection skrinshoti bilan alohida flavor, Play Accessibility deklaratsiyasi.
 - CI (GitHub Actions), Play listing, iOS bilan kod bo'lishish (KMP).
+
+## 2026-10-30 yangilanish: iOS bilan tenglik (0.2.0-beta)
+
+Sentabrdan beri iOS'ga kirgan hamma AI yangiliklari ko'chirildi, Android'ga xos farqlar bilan:
+
+| iOS | Android |
+|---|---|
+| `Hedge` 4 modelli zanjir, `GeminiQuality` | `GeminiClient` zanjiri (5 s jimlikdan keyin keyingisi, qayta urinsa bo'ladigan xato darhol), `GeminiQuality` |
+| `Prompts.swift` | `Prompts.kt` — bir xil qoidalar + `transcriptBasics` ([TOP]/[L]/[R] teglar) |
+| `Friend.formality/history/notes/examples`, `ChatHistory`, `EditLearning` | aynan (`data/`) |
+| ✨ variantlar saqlanadi, «↩︎ Asli», sozlash tugmalari, `textChanged` | `KeyboardAi`; `onUpdateSelection` → `textChanged()` |
+| 📋 `UIPasteboard.changeCount` | `ClipDescription.timestamp`, standart IME nusxa taxtasini o'qiy oladi; o'qilgan belgi prefs'da |
+| ⤢ `VariantList` | `VariantList` paneli (`LowerArea.VARIANTS`) |
+| `InstructionsEditor` + Files | `InstructionsDialog` + SAF `OpenDocument` |
+| `FriendDetailView`, `LanguagesView` | `FriendDetailDialog`, `LanguagesDialog` |
+| Ovozdan matn | **yo'q** — Android klaviaturasi mikrofonni to'g'ridan-to'g'ri ishlatishi mumkin (ruxsat ilova orqali), keyingi bosqich |
+
+148 JVM test. Simulator o'rniga `AIKeyboard_Test` emulyatori (port 5556).
+
