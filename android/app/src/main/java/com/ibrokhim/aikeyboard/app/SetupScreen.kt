@@ -7,6 +7,7 @@ import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -60,8 +62,10 @@ import androidx.compose.ui.unit.sp
 import com.ibrokhim.aikeyboard.BuildConfig
 import com.ibrokhim.aikeyboard.R
 import com.ibrokhim.aikeyboard.ai.KeyCheck
+import com.ibrokhim.aikeyboard.ai.Prompts
 import com.ibrokhim.aikeyboard.data.ApiKeyStore
 import com.ibrokhim.aikeyboard.data.ChatAnalysis
+import com.ibrokhim.aikeyboard.data.Friend
 import com.ibrokhim.aikeyboard.data.Languages
 import com.ibrokhim.aikeyboard.data.SharedState
 import com.ibrokhim.aikeyboard.data.SharedStore
@@ -79,6 +83,9 @@ fun SetupScreen(resumeTick: Int) {
     var keyVersion by remember { mutableIntStateOf(0) }
     val status = remember(resumeTick, keyVersion) { readSetupStatus(context, keys) }
     var disclosure by remember { mutableStateOf(false) }
+    var editingStyle by remember { mutableStateOf(false) }
+    var editingLanguages by remember { mutableStateOf(false) }
+    var friendDetail by remember { mutableStateOf<String?>(null) }
     val now = System.currentTimeMillis()
 
     Scaffold { padding ->
@@ -91,11 +98,48 @@ fun SetupScreen(resumeTick: Int) {
             item { StepsSection(status, context) { disclosure = true } }
             item { KeySection(keys) { keyVersion++ } }
             item { TrySection(context) }
-            item { LanguageSection(shared, now) { language -> store.update { it.copy(targetLanguage = language, activeFriend = null) } } }
+            item {
+                LanguageSection(
+                    shared, now,
+                    onSelect = { language -> store.update { it.copy(targetLanguage = language, activeFriend = null) } },
+                    onEdit = { editingLanguages = true },
+                )
+            }
+            item { TranslationSection(shared, store) { editingStyle = true } }
             item { KeyboardSection(shared, store) }
-            if (shared.friends.isNotEmpty()) item { FriendsSection(shared) { name -> store.update { it.forgetFriend(name) } } }
+            if (shared.friends.isNotEmpty()) item { FriendsSection(shared) { name -> friendDetail = name } }
             shared.context?.let { analysis -> item { ContextSection(analysis, stale = shared.freshContext(now) == null) } }
             item { PrivacySection() }
+        }
+    }
+    if (editingStyle) {
+        InstructionsDialog(
+            title = "Tarjima uslubi",
+            placeholder = "Gemini sessiyangizga bergan ko'rsatma, yoki misollar:\n«hey stranger» → «ey yo'qolib ketgan odam»",
+            initial = shared.translationStyle.orEmpty(),
+            onSave = { text -> store.update { it.copy(translationStyle = text.ifEmpty { null }) }; editingStyle = false },
+            onDismiss = { editingStyle = false },
+        )
+    }
+    if (editingLanguages) {
+        LanguagesDialog(
+            list = shared.languageList,
+            edited = shared.languages != null,
+            onChange = { list -> store.update { it.copy(languages = list) } },
+            onDismiss = { editingLanguages = false },
+        )
+    }
+    friendDetail?.let { name ->
+        val friend = shared.friends.firstOrNull { it.name == name }
+        if (friend == null) {
+            friendDetail = null
+        } else {
+            FriendDetailDialog(
+                friend = friend,
+                onChange = { change -> store.update { it.updateFriend(name, change) } },
+                onForget = { store.update { it.forgetFriend(name) } },
+                onDismiss = { friendDetail = null },
+            )
         }
     }
     if (disclosure) {
@@ -271,14 +315,14 @@ private fun TrySection(context: Context) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun LanguageSection(shared: SharedState, now: Long, onSelect: (String) -> Unit) {
+private fun LanguageSection(shared: SharedState, now: Long, onSelect: (String) -> Unit, onEdit: () -> Unit) {
     val current = shared.language(now)
     Section(
         "✨ qaysi tilga yozadi",
         footer = "O'zi almashadi: chat o'qilgandan keyin — suhbat tiliga. Klaviaturada do'stingiz nomini bossangiz — uning tiliga.",
     ) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            (listOf(current) + Languages.common.filter { it != current }).forEach { language ->
+            (listOf(current) + shared.languageList.filter { it != current }).forEach { language ->
                 FilterChip(
                     selected = language == current,
                     onClick = { onSelect(language) },
@@ -286,6 +330,45 @@ private fun LanguageSection(shared: SharedState, now: Long, onSelect: (String) -
                 )
             }
         }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Klaviatura tillari: ${shared.languageList.size} ta", modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TextButton(onClick = onEdit) { Text("Tahrirlash") }
+        }
+    }
+}
+
+@Composable
+private fun TranslationSection(shared: SharedState, store: SharedStore, onEditStyle: () -> Unit) {
+    Section(
+        "Tarjima",
+        footer = "Uslub har tarjimaga va ✨ ga qo'shiladi; eng kuchli ta'sir — «asl xabar → sizga yoqqan tarjima» misollari " +
+            "(${Prompts.STYLE_LIMIT} belgigacha, fayldan ham). Xotira va tuzatishlar faqat shu telefonda; o'chirsangiz, " +
+            "saqlanganlari ham o'chadi. Sifatli rejim kuchliroq modellar bilan, bir necha soniya sekinroq — tajribaviy.",
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Tarjima uslubi", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    shared.translationStyle ?: "Yo'q — Gemini sessiyangizdagi ko'rsatmani shu yerga qo'ying",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                )
+            }
+            TextButton(onClick = onEditStyle) { Text(if (shared.translationStyle == null) "Yozish" else "Tahrirlash") }
+        }
+        SettingSwitch(
+            "Suhbat xotirasi",
+            "Chat o'qishlaridagi xabarlar va ✨ variantini yuborishdan oldin qilgan tuzatishlaringiz har do'st uchun eslab qolinadi.",
+            shared.rememberChats,
+        ) { on -> store.update { it.setRememberChats(on) } }
+        SettingSwitch(
+            "Sifatli tarjima (sekinroq)",
+            "Kuchliroq modellar va ko'proq fikrlash — tarjima va ✨ uchun.",
+            shared.qualityMode,
+        ) { on -> store.update { it.copy(qualityMode = on) } }
     }
 }
 
@@ -319,18 +402,30 @@ private fun SettingSwitch(title: String, body: String, checked: Boolean, onChang
 }
 
 @Composable
-private fun FriendsSection(shared: SharedState, onForget: (String) -> Unit) {
-    Section("Do'stlar", footer = "Har chat o'qilgandan keyin eslab qolinadi. Klaviaturada ularni bir bosishda tanlaysiz.") {
+private fun FriendsSection(shared: SharedState, onOpen: (String) -> Unit) {
+    Section(
+        "Do'stlar",
+        footer = "Har chat o'qilgandan keyin eslab qolinadi. Klaviaturada ularni bir bosishda tanlaysiz. Bossangiz — muloqot darajasi, ko'rsatma va xotira.",
+    ) {
         shared.friends.forEach { friend ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onOpen(friend.name) }.padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Column(Modifier.weight(1f)) {
                     Text("${Languages.flag(friend.language)} ${friend.name}", style = MaterialTheme.typography.titleSmall)
+                    val parts = listOf(friend.language, friend.tone).filter { it.isNotBlank() } +
+                        listOfNotNull(
+                            friend.formality?.let { if (it == Friend.Formality.INFORMAL) "sen" else "siz" },
+                            friend.notes?.let { "ko'rsatma" },
+                            friend.history?.size?.takeIf { it > 0 }?.let { "$it xabar" },
+                        )
                     Text(
-                        listOf(friend.language, friend.tone).filter { it.isNotBlank() }.joinToString(" · "),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        parts.joinToString(" · "), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                 }
-                TextButton(onClick = { onForget(friend.name) }) { Text("O'chirish") }
+                Text("›", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
