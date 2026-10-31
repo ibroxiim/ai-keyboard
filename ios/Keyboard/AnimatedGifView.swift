@@ -23,6 +23,7 @@ final class GifImageView: UIImageView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         contentMode = .scaleAspectFill
+        isUserInteractionEnabled = false
         clipsToBounds = true
         backgroundColor = UIColor.secondarySystemFill
     }

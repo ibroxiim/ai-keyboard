@@ -37,3 +37,12 @@ natijalar berilgan tartibda, KLIPY nomi natijalar yonida (qidiruv qatorida "GIF 
 Unit: `Klipy.parse` (ikkala format bo'lmagan natija tashlanadi), URL (q, featured, filterlar), xato matnlari,
 `KeyboardMetrics` balandliklari. Simulator (Full Access yoqilgan): tugma, panel, yozish qidiruvga ketishi, kalit
 bo'lmasa xabar; kalit bilan — haqiqiy qidiruv va nusxalash (Pasteboard'da `public.gif`/`com.compuserve.gif`).
+
+### 2026-11-01 sinov natijasi (iPhone 17 Simulator, haqiqiy KLIPY kaliti)
+
+- Trending va qidiruv («cat») ishladi: tasma animatsiyali GIF'lar bilan to'ldi, tugmalar qidiruv maydoniga yozdi.
+- Topilgan xato: GIF bosilganda hech narsa bo'lmasdi. Sabab — `Button` yorlig'i `UIViewRepresentable` (`UIImageView`)
+  bo'lsa, SwiftUI bosishni tugmaga yetkazmaydi. Yechim: `AnimatedGifView` ga `.allowsHitTesting(false)`, yorliqqa
+  `.contentShape(...)`, `GifImageView`da `isUserInteractionEnabled = false`. Shundan keyin «GIF nusxalandi» xabari
+  chiqdi va panel yopildi. `file.md.gif` ≈ 270 KB, 0.4 s da yuklanadi.
+- Kalitni fayl orqali emas, terminalda ko'rinmas kiritish uchun `ios/tools/set-klipy-key.sh`.

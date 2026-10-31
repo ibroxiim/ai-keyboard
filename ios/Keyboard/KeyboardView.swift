@@ -406,9 +406,12 @@ struct GifBar: View {
                             ForEach(model.gifs) { gif in
                                 let width = KeyboardMetrics.gifStripHeight * gif.previewSize.width / gif.previewSize.height
                                 Button { model.pick(gif) } label: {
+                                    // The UIKit image view must not take the touch, or the button never sees it.
                                     AnimatedGifView(url: gif.preview)
+                                        .allowsHitTesting(false)
                                         .frame(width: min(260, max(70, width)), height: KeyboardMetrics.gifStripHeight)
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        .contentShape(RoundedRectangle(cornerRadius: 10))
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityLabel(gif.title)

@@ -40,7 +40,8 @@ o'zgartiring va PR'ga qo'shmang:
 `ios/Shared/Secrets.swift` gitignore'da — API kalitlar hech qachon commit qilinmaydi. GIF qidiruvi uchun
 shu faylga `klipyAPIKey` ham qo'yiladi (KLIPY Partner Panel, https://klipy.com/developers — test kaliti soatiga
 100 so'rov, production kaliti forma orqali; Google'ning Tenor API'si 2026-06-30 da yopilgan); bo'sh qolsa
-klaviaturadagi GIF tugmasi buni aytadi, qolgani ishlayveradi.
+klaviaturadagi GIF tugmasi buni aytadi, qolgani ishlayveradi. Kalitni qo'lda yozmasdan `ios/tools/set-klipy-key.sh`
+bilan kiriting — terminalda ko'rinmaydi va shell tarixiga tushmaydi.
 
 ## Android
 
