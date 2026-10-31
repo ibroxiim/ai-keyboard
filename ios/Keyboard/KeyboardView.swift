@@ -1,23 +1,6 @@
 import SwiftUI
 import UIKit
 
-enum KeyboardMetrics {
-    static let statusHeight: CGFloat = 34
-    static let chipsHeight: CGFloat = 58
-    static let barHeight: CGFloat = 6 + statusHeight + 6 + chipsHeight + 4
-    /// Status row only — about the height of the system keyboard's prediction bar.
-    static let compactBarHeight: CGFloat = 6 + statusHeight + 6
-    static let keyHeight: CGFloat = 44
-    static let rowGap: CGFloat = 11
-    static let keyGap: CGFloat = 6
-    static let sideInset: CGFloat = 3
-    static let keysTopInset: CGFloat = 8
-    static let keysHeight: CGFloat = keysTopInset + keyHeight * 4 + rowGap * 3 + 4
-    static func totalHeight(barExpanded: Bool) -> CGFloat {
-        (barExpanded ? barHeight : compactBarHeight) + keysHeight
-    }
-}
-
 enum KeyboardColors {
     static let keyUI = UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0.42, alpha: 1) : .white }
     static let functionKeyUI = UIColor {
@@ -38,7 +21,7 @@ struct KeyboardView: View {
     var body: some View {
         VStack(spacing: 0) {
             SuggestionBar(model: model)
-                .frame(height: model.barExpanded ? KeyboardMetrics.barHeight : KeyboardMetrics.compactBarHeight)
+                .frame(height: KeyboardMetrics.barHeight(for: model.barMode))
             if model.showsDetails, let context = model.context {
                 ContextDetails(context: context) { model.showsDetails = false }
                     .frame(height: KeyboardMetrics.keysHeight)
@@ -71,6 +54,14 @@ struct SuggestionBar: View {
     let model: KeyboardModel
 
     var body: some View {
+        if model.showsGif {
+            GifBar(model: model)
+        } else {
+            bar
+        }
+    }
+
+    private var bar: some View {
         VStack(spacing: 6) {
             HStack(spacing: 8) {
                 status
@@ -198,6 +189,15 @@ struct SuggestionBar: View {
                     .padding(.horizontal, 11)
                     .frame(height: 30)
                     .background(Capsule().fill(KeyboardColors.key))
+                }
+                .buttonStyle(.plain)
+                Button(action: model.openGif) {
+                    Text("GIF")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 10)
+                        .frame(height: 30)
+                        .background(Capsule().fill(KeyboardColors.key))
                 }
                 .buttonStyle(.plain)
                 if model.clipboardOffered {
@@ -354,6 +354,71 @@ struct Chip: View {
         .onTapGesture(perform: pick)
         .onLongPressGesture(minimumDuration: 0.35, perform: expand)
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// Search row and a strip of animated previews in place of the bar; the keys below type into the search
+/// (an input view cannot summon a keyboard for its own field). Tapping a GIF copies it: iOS lets a keyboard
+/// put an image on the pasteboard, not into the host app's field.
+struct GifBar: View {
+    let model: KeyboardModel
+
+    var body: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 8) {
+                Text("GIF").font(.system(size: 13, weight: .bold)).foregroundStyle(.secondary)
+                HStack(spacing: 2) {
+                    Text(model.gifQuery.isEmpty ? "Qidiring — tugmalar shu yerga yozadi" : model.gifQuery)
+                        .font(.system(size: 14))
+                        .foregroundStyle(model.gifQuery.isEmpty ? .secondary : .primary)
+                        .lineLimit(1)
+                    if !model.gifQuery.isEmpty {
+                        RoundedRectangle(cornerRadius: 1).fill(Color.accentColor).frame(width: 2, height: 18)
+                    }
+                    Spacer(minLength: 0)
+                    if model.gifLoading { ProgressView().controlSize(.small) }
+                }
+                .padding(.horizontal, 10)
+                .frame(maxWidth: .infinity)
+                .frame(height: 30)
+                .background(Capsule().fill(KeyboardColors.key))
+                Button(action: model.closeGif) {
+                    Image(systemName: "xmark.circle.fill").font(.system(size: 18)).foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .frame(height: KeyboardMetrics.statusHeight)
+            ZStack {
+                if model.gifs.isEmpty {
+                    Text(model.gifStatus ?? (model.gifLoading ? "Yuklanmoqda…" : "Hech narsa topilmadi"))
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(model.gifs) { gif in
+                                let width = KeyboardMetrics.gifStripHeight * gif.previewSize.width / gif.previewSize.height
+                                Button { model.pick(gif) } label: {
+                                    AnimatedGifView(url: gif.preview)
+                                        .frame(width: min(260, max(70, width)), height: KeyboardMetrics.gifStripHeight)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(gif.description)
+                            }
+                        }
+                    }
+                    .modifier(NoScrollEdgeEffect())
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: KeyboardMetrics.gifStripHeight)
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 6)
+        .padding(.bottom, 4)
     }
 }
 
