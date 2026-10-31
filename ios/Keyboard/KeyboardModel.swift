@@ -1,6 +1,5 @@
 import SwiftUI
 import UIKit
-import UniformTypeIdentifiers
 
 /// `@Observable` (not `ObservableObject`) so a keystroke only redraws the views that read what changed —
 /// with `@Published` every insert would re-render all ~35 keys and the suggestion bar, and typing would lag.
@@ -45,14 +44,6 @@ final class KeyboardModel {
     /// The friend/language chip row, opened from the collapsed "✨ → English ⌄" pill.
     var showsTargetPicker = false
     var showsEmoji = false
-    /// GIF search in place of the bar; while it is open the keys type into `gifQuery`, not the host app.
-    var showsGif = false
-    var gifQuery = ""
-    var gifs: [Gif] = []
-    var gifLoading = false
-    /// What the empty strip says: an error, or "nothing found".
-    var gifStatus: String?
-    @ObservationIgnored private var gifTask: Task<Void, Never>?
     /// Context freshness is time-based; views read it against this, refreshed on every appearance,
     /// so an expired screenshot also disappears (and the bar collapses) without any state change.
     var now = Date()
@@ -107,8 +98,6 @@ final class KeyboardModel {
 
     /// The chip row costs ~62pt of the chat above the keyboard; show it only when it has something in it.
     var barExpanded: Bool { !chips.isEmpty || isAnalyzing || showsTargetPicker }
-
-    var barMode: KeyboardMetrics.BarMode { showsGif ? .gif : (barExpanded ? .expanded : .compact) }
 
     /// Without a fresh screenshot the chip row picks who we are writing to: recent friends first, then the languages the user picked in the app.
     var targets: [Target] {
@@ -362,30 +351,17 @@ final class KeyboardModel {
     }
 
     func type(_ text: String) {
-        if showsGif {
-            editGifQuery { $0 += text }
-            if shift == .once { setShift(.off) }
-            return
-        }
         proxy?.insertText(shift == .off ? text : text.uppercased())
         if shift == .once { setShift(.off) }
         autoCapitalize()
     }
 
     func backspace() {
-        if showsGif {
-            editGifQuery { if !$0.isEmpty { $0.removeLast() } }
-            return
-        }
         proxy?.deleteBackward()
         autoCapitalize()
     }
 
     func space() {
-        if showsGif {
-            editGifQuery { if !$0.isEmpty, $0.last != " " { $0 += " " } }
-            return
-        }
         // Double space → ". " like the system keyboard.
         let before = proxy?.documentContextBeforeInput ?? ""
         if let last = lastSpaceTap, Date().timeIntervalSince(last) < 0.35,
@@ -402,90 +378,8 @@ final class KeyboardModel {
     }
 
     func newline() {
-        if showsGif {
-            searchGifs()
-            return
-        }
         proxy?.insertText("\n")
         autoCapitalize()
-    }
-
-    // MARK: GIF
-
-    /// GIF — KLIPY search above the keys. Needs Full Access for the network and the pasteboard.
-    func openGif() {
-        guard hasFullAccess else {
-            flash("GIF uchun Settings'da AI Keyboard → Allow Full Access'ni yoqing")
-            return
-        }
-        keyDown()
-        if showsEmoji { showsEmoji = false }
-        if showsTargetPicker { showsTargetPicker = false }
-        if showsDetails { showsDetails = false }
-        closeVariantList()
-        gifQuery = ""
-        showsGif = true
-        searchGifs()
-    }
-
-    func closeGif() {
-        gifTask?.cancel()
-        gifTask = nil
-        if showsGif { showsGif = false }
-        gifs = []
-        gifStatus = nil
-        if gifLoading { gifLoading = false }
-    }
-
-    /// Searches as the user types, a moment after the last key — one request per pause, not per letter.
-    private func editGifQuery(_ change: (inout String) -> Void) {
-        var query = gifQuery
-        change(&query)
-        guard query != gifQuery else { return }
-        gifQuery = query
-        searchGifs(after: .milliseconds(350))
-    }
-
-    private func searchGifs(after delay: Duration = .zero) {
-        gifTask?.cancel()
-        let query = gifQuery
-        gifLoading = true
-        gifTask = Task { [weak self] in
-            if delay > .zero { try? await Task.sleep(for: delay) }
-            guard !Task.isCancelled, let self else { return }
-            do {
-                let found = try await Klipy.search(query, key: Secrets.klipyAPIKey)
-                guard !Task.isCancelled, self.gifQuery == query else { return }
-                gifs = found
-                gifStatus = found.isEmpty ? "Hech narsa topilmadi" : nil
-            } catch {
-                guard !Task.isCancelled else { return }
-                gifs = []
-                gifStatus = error.localizedDescription
-            }
-            gifLoading = false
-        }
-    }
-
-    /// Copies the GIF: iOS does not let a keyboard put an image into the host app's field, so the user pastes
-    /// it — the same two steps as Gboard.
-    func pick(_ gif: Gif) {
-        keyDown()
-        gifTask?.cancel()
-        gifLoading = true
-        gifTask = Task { [weak self] in
-            do {
-                let data = try await Klipy.download(gif.full)
-                guard !Task.isCancelled, let self else { return }
-                UIPasteboard.general.setData(data, forPasteboardType: UTType.gif.identifier)
-                closeGif()
-                flash("GIF nusxalandi — maydonni bosib turib «Paste» ni bosing", for: 6)
-            } catch {
-                guard !Task.isCancelled, let self else { return }
-                gifLoading = false
-                gifStatus = "GIF yuklanmadi: \(error.localizedDescription)"
-            }
-        }
     }
 
     func tapShift() {

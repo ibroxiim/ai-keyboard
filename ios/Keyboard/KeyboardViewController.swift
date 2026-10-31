@@ -19,7 +19,7 @@ final class KeyboardViewController: UIInputViewController {
         host.view.translatesAutoresizingMaskIntoConstraints = false
         addChild(host)
         view.addSubview(host.view)
-        let height = view.heightAnchor.constraint(equalToConstant: KeyboardMetrics.totalHeight(bar: .compact))
+        let height = view.heightAnchor.constraint(equalToConstant: KeyboardMetrics.totalHeight(barExpanded: false))
         height.priority = UILayoutPriority(999)
         heightConstraint = height
         NSLayoutConstraint.activate([
@@ -156,13 +156,13 @@ final class KeyboardViewController: UIInputViewController {
     /// The keyboard grows by the chip row only while the row has something in it. SwiftUI cannot
     /// resize an input view itself, so follow `barExpanded` and move the height constraint.
     private func trackBarHeight() {
-        let mode = withObservationTracking {
-            model.barMode
+        let expanded = withObservationTracking {
+            model.barExpanded
         } onChange: { [weak self] in
             // Fires before the change is applied; read the new value on the next turn.
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.trackBarHeight() } }
         }
-        let height = KeyboardMetrics.totalHeight(bar: mode)
+        let height = KeyboardMetrics.totalHeight(barExpanded: expanded)
         guard let heightConstraint, heightConstraint.constant != height else { return }
         heightConstraint.constant = height
         guard view.window != nil else { return }

@@ -46,3 +46,12 @@ bo'lmasa xabar; kalit bilan — haqiqiy qidiruv va nusxalash (Pasteboard'da `pub
   `.contentShape(...)`, `GifImageView`da `isUserInteractionEnabled = false`. Shundan keyin «GIF nusxalandi» xabari
   chiqdi va panel yopildi. `file.md.gif` ≈ 270 KB, 0.4 s da yuklanadi.
 - Kalitni fayl orqali emas, terminalda ko'rinmas kiritish uchun `ios/tools/set-klipy-key.sh`.
+
+## 2026-11-01: iOS'dan olib tashlandi
+
+Foydalanuvchi Instagram DM'da sinadi: qo'yilgan GIF **oddiy rasm bo'lib ketdi**. Bu Instagram'ning xatti-harakati
+(Pasteboard'dan qo'yilgan har qanday rasm foto xabar bo'ladi; animatsiyali GIF faqat o'zining GIPHY tugmasidan),
+iOS klaviatura kengaytmasi esa maydonga faqat matn kirita oladi — to'g'ridan-to'g'ri yuborish imkonsiz.
+Foydalanuvchi qarori: iOS'dan olib tashlash. Uchala commit (9659330, de9ef72, 317a5f8) revert qilindi; bu hujjat
+tarix uchun qoldi. GIF faqat **Android**da (`commitContent` bilan to'g'ridan-to'g'ri yuboriladi) qilinadi.
+`Secrets.swift`dagi `klipyAPIKey` qatori zarar qilmaydi; Android uchun kalit shu yerdan olinishi mumkin.
