@@ -366,7 +366,12 @@ struct GifBar: View {
     var body: some View {
         VStack(spacing: 6) {
             HStack(spacing: 8) {
-                Text("GIF").font(.system(size: 13, weight: .bold)).foregroundStyle(.secondary)
+                // KLIPY asks to be named next to its results.
+                VStack(spacing: 0) {
+                    Text("GIF").font(.system(size: 12, weight: .bold))
+                    Text("KLIPY").font(.system(size: 8, weight: .semibold))
+                }
+                .foregroundStyle(.secondary)
                 HStack(spacing: 2) {
                     Text(model.gifQuery.isEmpty ? "Qidiring — tugmalar shu yerga yozadi" : model.gifQuery)
                         .font(.system(size: 14))
@@ -406,7 +411,7 @@ struct GifBar: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
                                 }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel(gif.description)
+                                .accessibilityLabel(gif.title)
                             }
                         }
                     }

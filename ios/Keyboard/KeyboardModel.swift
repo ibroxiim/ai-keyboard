@@ -412,7 +412,7 @@ final class KeyboardModel {
 
     // MARK: GIF
 
-    /// GIF — Tenor search above the keys. Needs Full Access for the network and the pasteboard.
+    /// GIF — KLIPY search above the keys. Needs Full Access for the network and the pasteboard.
     func openGif() {
         guard hasFullAccess else {
             flash("GIF uchun Settings'da AI Keyboard → Allow Full Access'ni yoqing")
@@ -454,7 +454,7 @@ final class KeyboardModel {
             if delay > .zero { try? await Task.sleep(for: delay) }
             guard !Task.isCancelled, let self else { return }
             do {
-                let found = try await Tenor.search(query, key: Secrets.tenorAPIKey)
+                let found = try await Klipy.search(query, key: Secrets.klipyAPIKey)
                 guard !Task.isCancelled, self.gifQuery == query else { return }
                 gifs = found
                 gifStatus = found.isEmpty ? "Hech narsa topilmadi" : nil
@@ -475,7 +475,7 @@ final class KeyboardModel {
         gifLoading = true
         gifTask = Task { [weak self] in
             do {
-                let data = try await Tenor.download(gif.full)
+                let data = try await Klipy.download(gif.full)
                 guard !Task.isCancelled, let self else { return }
                 UIPasteboard.general.setData(data, forPasteboardType: UTType.gif.identifier)
                 closeGif()

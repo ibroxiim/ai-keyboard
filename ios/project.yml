@@ -87,7 +87,7 @@ targets:
       - Shared/RewriteTweak.swift
       - Shared/EditLearning.swift
       - Shared/ClipboardRead.swift
-      - Shared/Tenor.swift
+      - Shared/Klipy.swift
       - Keyboard/KeyboardMetrics.swift
       - Shared/Models.swift
       - Shared/TouchOutcome.swift

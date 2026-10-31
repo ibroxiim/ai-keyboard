@@ -39,7 +39,7 @@ final class GifImageView: UIImageView {
             return
         }
         task = Task { [weak self] in
-            guard let data = try? await Tenor.download(url), !Task.isCancelled else { return }
+            guard let data = try? await Klipy.download(url), !Task.isCancelled else { return }
             Self.cache.setObject(data as NSData, forKey: url as NSURL)
             await MainActor.run { self?.animate(data) }
         }

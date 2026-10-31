@@ -38,8 +38,9 @@ o'zgartiring va PR'ga qo'shmang:
 - `ios/tools/make_shortcut.py` — `BUNDLE_ID`, `TEAM_ID` (keyin shortcut faylini qayta yarating, README'ga qarang)
 
 `ios/Shared/Secrets.swift` gitignore'da — API kalitlar hech qachon commit qilinmaydi. GIF qidiruvi uchun
-shu faylga `tenorAPIKey` ham qo'yiladi (Google Cloud → Tenor API → API key, bepul); bo'sh qolsa klaviaturadagi GIF
-tugmasi buni aytadi, qolgani ishlayveradi.
+shu faylga `klipyAPIKey` ham qo'yiladi (KLIPY Partner Panel, https://klipy.com/developers — test kaliti soatiga
+100 so'rov, production kaliti forma orqali; Google'ning Tenor API'si 2026-06-30 da yopilgan); bo'sh qolsa
+klaviaturadagi GIF tugmasi buni aytadi, qolgani ishlayveradi.
 
 ## Android
 
