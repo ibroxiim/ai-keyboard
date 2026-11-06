@@ -94,6 +94,7 @@ targets:
       - Shared/PhraseDiff.swift
       - Keyboard/Diagnostics/TouchJournal.swift
       - Shared/GeminiError.swift
+      - Shared/APIKey.swift
       - Shared/Hedge.swift
       - Shared/ProvisioningExpiry.swift
       - Shared/VoiceState.swift

@@ -36,7 +36,7 @@ tarjima ~2s, tayyor javoblar ~3s. ✨ ~1.5s.
 
 ```bash
 cd ios
-cp Shared/Secrets.swift.example Shared/Secrets.swift   # kalitni qo'ying
+cp Shared/Secrets.swift.example Shared/Secrets.swift   # kalitni bo'sh qoldirsa ham bo'ladi
 xcodegen generate
 open AIKeyboard.xcodeproj
 ```
@@ -75,8 +75,9 @@ shortcuts sign --mode anyone --input build/AIKeyboard-unsigned.shortcut --output
 ## Cheklovlar
 
 - Klaviatura faqat o'zi yozgan matnni ishonchli ko'radi. Boshqa klaviaturada yozilgan matnni ✨ ko'rmasligi mumkin.
-- iOS: API kalit ilova ichida — faqat shaxsiy foydalanish uchun. Boshqalarga tarqatishdan oldin kalitni server
-  (masalan Cloudflare Worker) orqasiga o'tkazish kerak. Android'da har foydalanuvchi o'z kalitini kiritadi.
+- Gemini kaliti: har foydalanuvchi o'z kalitini ilovadagi «API kalit qo'shish» tugmasi orqali kiritadi (iOS'da
+  Keychain'da, Android'da ilova xotirasida; saqlashdan oldin Google'da tekshiriladi). `Secrets.swift`dagi kalit faqat
+  dasturchi uchun zaxira — tarqatiladigan build'ga kalit qo'ymang.
 - Android: Google Play hozircha yo'q — Play Accessibility API'dan foydalanishni cheklaydi; Play versiyasi uchun
   skrinshot (MediaProjection) varianti keyinroq.
 

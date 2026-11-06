@@ -32,6 +32,9 @@ struct ContentView: View {
     @State private var testText = ""
     @FocusState private var testFieldFocused: Bool
     @State private var notificationsAllowed = true
+    @State private var savedKey = KeyStore.userKey
+    @State private var editingKey = false
+    @State private var keyNotice: String?
 
     private var state: SharedState { store.state }
     private let shortcutFile = Bundle.main.url(forResource: "AI Keyboard", withExtension: "shortcut")
@@ -47,6 +50,7 @@ struct ContentView: View {
                 }
                 signingSection
                 setupSection
+                keySection
                 testSection
                 voiceSection
                 languageSection
@@ -63,15 +67,54 @@ struct ContentView: View {
         .sheet(isPresented: $voice.showsScreen) {
             VoiceScreen().environmentObject(voice)
         }
+        .sheet(isPresented: $editingKey) {
+            APIKeySheet(hasKey: savedKey != nil) { notice in
+                savedKey = KeyStore.userKey
+                keyNotice = notice
+            }
+        }
         .task { await refreshExpiryReminders() }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
             store.reload()
+            savedKey = KeyStore.userKey
             Task { await refreshExpiryReminders() }
         }
         .onChange(of: pickerItem) { _, item in
             guard let item else { return }
             analyze(item)
+        }
+    }
+
+    // MARK: Gemini key
+
+    private var keySection: some View {
+        Section {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    if let savedKey {
+                        Text("Kalit kiritilgan")
+                        Text(APIKey.masked(savedKey)).font(.footnote.monospaced()).foregroundStyle(.secondary)
+                    } else if !Secrets.geminiAPIKey.isEmpty {
+                        Text("Ilovaga o'rnatilgan kalit ishlatilyapti")
+                        Text("O'zingiznikini qo'shsangiz, o'shanisi ishlatiladi").font(.footnote).foregroundStyle(.secondary)
+                    } else {
+                        Text("Kalit kiritilmagan")
+                        Text("Tarjima va ✨ kalitsiz ishlamaydi").font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+            } icon: {
+                Image(systemName: savedKey == nil ? "key" : "key.fill")
+                    .foregroundStyle(savedKey == nil ? Color.orange : Color.green)
+            }
+            Button(savedKey == nil ? "API kalit qo'shish" : "Kalitni almashtirish") { editingKey = true }
+            if let keyNotice {
+                Text(keyNotice).font(.footnote).foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("Gemini kaliti")
+        } footer: {
+            Text("Tarjima va ✨ Google Gemini orqali ishlaydi. Bepul kalitni aistudio.google.com/apikey dan oling. Klaviatura ham shu kalitni ishlatadi.")
         }
     }
 

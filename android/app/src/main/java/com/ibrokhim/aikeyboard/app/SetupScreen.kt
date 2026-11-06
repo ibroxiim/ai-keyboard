@@ -247,54 +247,76 @@ private fun Step(number: Int, done: Boolean, current: Boolean, title: String, bo
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun KeySection(keys: ApiKeyStore, onChanged: () -> Unit) {
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var text by remember { mutableStateOf(keys.userKey.orEmpty()) }
+    var version by remember { mutableIntStateOf(0) }
+    val saved = remember(version) { keys.userKey }
+    var editing by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var checking by remember { mutableStateOf(false) }
+    val usesBuildKey = saved == null && BuildConfig.GEMINI_API_KEY.isNotBlank()
     Section(
         "Gemini kaliti",
-        footer = "Kalit faqat shu telefonda saqlanadi va faqat Google Gemini'ga yuboriladi. " +
-            "Bepul kalit: aistudio.google.com/apikey",
+        footer = "Tarjima va ✨ Google Gemini orqali ishlaydi. Kalit faqat shu telefonda saqlanadi va faqat Gemini'ga " +
+            "yuboriladi. Bepul kalit: aistudio.google.com/apikey",
     ) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = {
-                text = it.trim()
-                message = null
-            },
-            label = { Text("API kalit") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(10.dp).clip(CircleShape).background(if (saved != null || usesBuildKey) Done else Color(0xFFE8A33D)))
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(
+                    when {
+                        saved != null -> "Kalit kiritilgan"
+                        usesBuildKey -> "Debug build kaliti ishlatilyapti"
+                        else -> "Kalit kiritilmagan"
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Text(
+                    when {
+                        saved != null -> ApiKeyStore.masked(saved)
+                        usesBuildKey -> "O'zingiznikini qo'shsangiz, o'shanisi ishlatiladi"
+                        else -> "Tarjima va ✨ kalitsiz ishlamaydi"
+                    },
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = if (saved != null) androidx.compose.ui.text.font.FontFamily.Monospace else null,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = {
-                keys.userKey = text
-                onChanged()
-                message = if (text.isBlank()) "Kalit o'chirildi" else "Saqlandi"
-            }) { Text("Saqlash") }
-            OutlinedButton(
-                enabled = !checking && (text.isNotBlank() || keys.effectiveKey().isNotBlank()),
-                onClick = {
+                message = null
+                editing = true
+            }) { Text(if (saved == null) "API kalit qo'shish" else "Kalitni almashtirish") }
+            if (saved != null || usesBuildKey) {
+                OutlinedButton(enabled = !checking, onClick = {
                     checking = true
                     scope.launch {
-                        message = KeyCheck.check(text.ifBlank { keys.effectiveKey() }) ?: "✓ Kalit ishlayapti"
+                        message = when (val outcome = KeyCheck.check(keys.effectiveKey())) {
+                            KeyCheck.Outcome.Valid -> "✓ Kalit ishlayapti"
+                            is KeyCheck.Outcome.Rejected -> outcome.reason
+                            is KeyCheck.Outcome.Unverified -> "Tekshirib bo'lmadi: ${outcome.reason}"
+                        }
                         checking = false
                     }
-                },
-            ) { Text(if (checking) "Tekshirilmoqda…" else "Tekshirish") }
-            TextButton(onClick = {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey")))
-            }) { Text("Kalit olish") }
+                }) { Text(if (checking) "Tekshirilmoqda…" else "Tekshirish") }
+            }
         }
         message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-        if (keys.userKey == null && BuildConfig.GEMINI_API_KEY.isNotBlank()) {
-            Text(
-                "Debug build: local.properties'dagi kalit ishlatilyapti.",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+    }
+    if (editing) {
+        ApiKeyDialog(
+            keys = keys,
+            hasKey = saved != null,
+            onDone = { note ->
+                message = note
+                editing = false
+                version++
+                onChanged()
+            },
+            onDismiss = { editing = false },
+        )
     }
 }
 

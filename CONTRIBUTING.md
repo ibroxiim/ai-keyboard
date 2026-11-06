@@ -24,7 +24,7 @@ Gemini API kaliti ([AI Studio](https://aistudio.google.com/apikey), bepul).
 
 ```bash
 cd ios
-cp Shared/Secrets.swift.example Shared/Secrets.swift   # o'z kalitingizni qo'ying
+cp Shared/Secrets.swift.example Shared/Secrets.swift   # ixtiyoriy: dasturchi kaliti (zaxira)
 xcodegen generate
 open AIKeyboard.xcodeproj
 ```
@@ -37,7 +37,9 @@ o'zgartiring va PR'ga qo'shmang:
 - `ios/Shared/EnabledKeyboards.swift` — `aiKeyboardID` (klaviatura bundle ID'si)
 - `ios/tools/make_shortcut.py` — `BUNDLE_ID`, `TEAM_ID` (keyin shortcut faylini qayta yarating, README'ga qarang)
 
-`ios/Shared/Secrets.swift` gitignore'da — API kalitlar hech qachon commit qilinmaydi.
+`ios/Shared/Secrets.swift` gitignore'da — API kalitlar hech qachon commit qilinmaydi. Odatda kalit ilovadagi
+«API kalit qo'shish» orqali kiritiladi (Keychain, App Group `group.com.ibrokhim.dmtranslator` access group'i —
+klaviatura ham o'qiydi); `Secrets.geminiAPIKey` faqat foydalanuvchi kaliti bo'lmaganda ishlatiladi.
 
 ## Android
 

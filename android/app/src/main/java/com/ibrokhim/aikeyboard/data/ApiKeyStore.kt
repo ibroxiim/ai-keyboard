@@ -13,7 +13,8 @@ class ApiKeyStore(private val prefs: SharedPreferences) {
         get() = prefs.getString(KEY, null)?.takeIf { it.isNotBlank() }
         set(value) {
             val editor = prefs.edit()
-            if (value.isNullOrBlank()) editor.remove(KEY) else editor.putString(KEY, value.trim())
+            val key = normalize(value)
+            if (key == null) editor.remove(KEY) else editor.putString(KEY, key)
             editor.apply()
         }
 
@@ -22,7 +23,13 @@ class ApiKeyStore(private val prefs: SharedPreferences) {
     companion object {
         private const val KEY = "geminiApiKey"
 
-        fun resolveKey(user: String?, build: String): String = user?.trim()?.takeIf { it.isNotEmpty() } ?: build
+        fun resolveKey(user: String?, build: String): String = normalize(user) ?: build
+
+        /** Pasted keys often carry spaces or line breaks; null when nothing is left (iOS `APIKey.normalized`). */
+        fun normalize(text: String?): String? = text?.filter { !it.isWhitespace() }?.takeIf { it.isNotEmpty() }
+
+        /** Shows which key is saved without showing the key: four dots and the last four characters. */
+        fun masked(key: String): String = if (key.length <= 4) "•".repeat(key.length) else "••••" + key.takeLast(4)
 
         fun get(context: Context) = ApiKeyStore(context.applicationContext.getSharedPreferences("secrets", Context.MODE_PRIVATE))
     }

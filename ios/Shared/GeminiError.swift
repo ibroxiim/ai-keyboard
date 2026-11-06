@@ -7,7 +7,7 @@ enum GeminiError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .missingKey: "Gemini API kaliti yo'q (Shared/Secrets.swift)"
+        case .missingKey: "Gemini API kaliti kiritilmagan — AI Keyboard ilovasida «API kalit qo'shish»"
         case .http(let code, let message): "Gemini \(code): \(message)"
         case .empty: "Gemini bo'sh javob qaytardi"
         }

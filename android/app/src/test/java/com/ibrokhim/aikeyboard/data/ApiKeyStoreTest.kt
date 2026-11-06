@@ -13,4 +13,15 @@ class ApiKeyStoreTest {
         assertEquals("build", ApiKeyStore.resolveKey("   ", "build"))
         assertEquals("", ApiKeyStore.resolveKey(null, ""))
     }
+
+    @Test fun pastedKeysLoseSpacesAndLineBreaks() {
+        assertEquals("AIzaSy-12_3", ApiKeyStore.normalize("  AIza Sy-12_3\n"))
+        assertEquals(null, ApiKeyStore.normalize(" \n\t "))
+        assertEquals(null, ApiKeyStore.normalize(null))
+    }
+
+    @Test fun maskingShowsOnlyTheLastFour() {
+        assertEquals("••••wxyz", ApiKeyStore.masked("AIzaSyABCDwxyz"))
+        assertEquals("•••", ApiKeyStore.masked("abc"))
+    }
 }
