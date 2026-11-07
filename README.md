@@ -55,9 +55,11 @@ Xcode'da iPhone'ni tanlab Run. Bepul Apple ID bilan:
 2. AI Keyboard → **Allow Full Access** (AI internet orqali ishlaydi; harf yozish usiz ham ishlaydi)
 3. Ilovada **Shortcut'ni qo'shish** → Shortcuts → **Add Shortcut** (tayyor fayl: `ios/App/Resources/AI Keyboard.shortcut`)
 4. Settings → Accessibility → Touch → **Back Tap** → Double Tap → **AI Keyboard** shortcut'i
+5. Ilovada **API kalit qo'shish** → [aistudio.google.com/apikey](https://aistudio.google.com/apikey) dan olingan
+   bepul Gemini kalitini kiriting (kalit Keychain'da saqlanadi, saqlashdan oldin Google'da tekshiriladi)
 
 Ilova sozlash qadamlarini o'zi belgilaydi: 1 — `AppleKeyboards`, 2 — klaviatura Full Access bilan ochilganda,
-3–4 — shortcut birinchi marta ishlaganda.
+3–4 — shortcut birinchi marta ishlaganda, 5 — «Gemini kaliti» bo'limida yashil kalit belgisi.
 
 Kontekst 15 daqiqa amal qiladi — keyin klaviatura eski takliflarni ko'rsatmaydi va "kimga yozyapsiz?" deb
 do'stlar (skrinshotlardan eslab qolingan: ism, til, ohang) va tillar tugmalarini chiqaradi.
